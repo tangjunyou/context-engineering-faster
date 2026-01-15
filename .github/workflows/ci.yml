@@ -139,4 +139,4 @@ jobs:
           curl -fsSI "http://127.0.0.1:3000$WASM_PATH" | tr -d '\r' | grep -i '^content-type: application/wasm$'
       - name: Stop container
         if: always()
-        run: docker stop ceviz
+        run: docker stop ceviz || true

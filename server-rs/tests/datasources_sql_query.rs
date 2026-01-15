@@ -20,7 +20,7 @@ async fn datasource_query_and_tables_work_for_sqlite() {
 
     let db_path = dir.path().join("test.db");
     std::fs::File::create(&db_path).unwrap();
-    let url = format!("sqlite://{}", db_path.display());
+    let url = sqlite_url(&db_path);
 
     sqlx::any::install_default_drivers();
     let mut conn = <sqlx::AnyConnection as Connection>::connect(&url)
@@ -115,4 +115,10 @@ async fn datasource_query_and_tables_work_for_sqlite() {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["value"], "Alice");
+}
+
+fn sqlite_url(path: &std::path::Path) -> String {
+    let p = path.to_string_lossy().replace('\\', "/");
+    let p = p.strip_prefix('/').unwrap_or(p.as_str());
+    format!("sqlite:///{p}")
 }

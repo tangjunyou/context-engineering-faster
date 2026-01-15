@@ -15,7 +15,7 @@ async fn sql_query_returns_first_cell_value_for_sqlite() {
 
     let db_path = dir.path().join("test.db");
     std::fs::File::create(&db_path).unwrap();
-    let url = format!("sqlite://{}", db_path.display());
+    let url = sqlite_url(&db_path);
 
     sqlx::any::install_default_drivers();
     let mut conn = <sqlx::AnyConnection as Connection>::connect(&url)
@@ -55,4 +55,10 @@ async fn sql_query_returns_first_cell_value_for_sqlite() {
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["value"], "Alice");
     assert!(json["rows"].is_array());
+}
+
+fn sqlite_url(path: &std::path::Path) -> String {
+    let p = path.to_string_lossy().replace('\\', "/");
+    let p = p.strip_prefix('/').unwrap_or(p.as_str());
+    format!("sqlite:///{p}")
 }
