@@ -1,0 +1,16 @@
+[package]
+name = "contextarchitect-desktop"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+tauri = "2"
+tauri-plugin-shell = "2"
+anyhow = "1"
+base64 = "0.22"
+rand = "0.8"
+serde_json = "1"
+
+[build-dependencies]
+tauri-build = "2"

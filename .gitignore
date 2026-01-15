@@ -10,6 +10,9 @@ build/
 # Rust build outputs
 **/target/
 
+# Tauri sidecar binaries (generated locally/CI)
+src-tauri/binaries/server-rs-*
+
 # Environment variables
 .env
 .env.local

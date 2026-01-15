@@ -33,6 +33,9 @@ jobs:
       - name: Verify WASM sync
         run: pnpm -s exec tsx scripts/verify-wasm-sync.ts
 
+      - name: Test
+        run: pnpm -s test
+
       - name: Build
         run: pnpm -s exec vite build
 
@@ -135,6 +138,11 @@ jobs:
           test -n "$WASM_FILE"
           WASM_PATH="${WASM_FILE#/app/public}"
           curl -fsSI "http://127.0.0.1:3000$WASM_PATH" | tr -d '\r' | grep -i '^content-type: application/wasm$'
+      - name: Verify security headers for index.html
+        run: |
+          curl -fsSI http://127.0.0.1:3000/ | tr -d '\r' | grep -i '^x-content-type-options: nosniff$'
+          curl -fsSI http://127.0.0.1:3000/ | tr -d '\r' | grep -i '^x-frame-options: DENY$'
+          curl -fsSI http://127.0.0.1:3000/ | tr -d '\r' | grep -i '^referrer-policy: no-referrer$'
       - name: Stop container
         if: always()
         run: docker stop ceviz || true

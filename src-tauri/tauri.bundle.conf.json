@@ -1,0 +1,27 @@
+{
+  "productName": "ContextArchitect",
+  "version": "0.1.0",
+  "identifier": "com.contextarchitect.app",
+  "build": {
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist/public"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ContextArchitect",
+        "width": 1200,
+        "height": 800
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "resources": ["../dist/public"],
+    "externalBin": ["binaries/server-rs"],
+    "icon": ["icons/icon.png"]
+  },
+  "plugins": {
+    "shell": {}
+  }
+}

@@ -42,6 +42,9 @@ vi.mock("@/lib/wasm/context_engine", () => {
 });
 
 vi.mock("@/lib/api/context-engine", () => ({
+  executePreviewTrace: vi.fn(async () => {
+    throw new Error("api unavailable");
+  }),
   executeTrace: vi.fn(async () => {
     throw new Error("api unavailable");
   }),
@@ -115,6 +118,57 @@ describe("PreviewPanel", () => {
 
     await vi.advanceTimersByTimeAsync(100);
     expect(wasmSpies.processContext).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends variable resolver specs to backend preview API", async () => {
+    const { executePreviewTrace } = await import("@/lib/api/context-engine");
+
+    vi.mocked(executePreviewTrace).mockResolvedValue({
+      runId: "run",
+      createdAt: "now",
+      outputStyle: "labeled",
+      text: "OK",
+      segments: [],
+      messages: [],
+    });
+
+    useStore.setState({
+      variables: [
+        {
+          id: "v1",
+          name: "chat",
+          type: "dynamic",
+          value: "5",
+          resolver: "chat://s1",
+          description: "",
+          source: "",
+        },
+        {
+          id: "v2",
+          name: "sql",
+          type: "dynamic",
+          value: "SELECT 1",
+          resolver: "sql://ds1",
+          description: "",
+          source: "",
+        },
+      ],
+    });
+
+    const { default: PreviewPanel } = await import("@/components/PreviewPanel");
+    render(<PreviewPanel />);
+
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(executePreviewTrace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: [
+          { id: "v1", name: "chat", type: "dynamic", value: "5", resolver: "chat://s1" },
+          { id: "v2", name: "sql", type: "dynamic", value: "SELECT 1", resolver: "sql://ds1" },
+        ],
+      })
+    );
+    expect(wasmSpies.processContext).not.toHaveBeenCalled();
   });
 
   it("frees the WASM engine on unmount", async () => {

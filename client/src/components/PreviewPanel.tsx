@@ -12,10 +12,8 @@ import init, { ContextEngine } from "@/lib/wasm/context_engine";
 import { useTranslation } from "react-i18next";
 import type { ContextFlowNode, NodeType } from "@/lib/types";
 import { shallow } from "zustand/shallow";
-import { executeTrace } from "@/lib/api/context-engine";
+import { executePreviewTrace } from "@/lib/api/context-engine";
 import type { TraceRun } from "@shared/trace";
-import { sqlQuery } from "@/lib/api/sql";
-import { renderSession } from "@/lib/api/sessions";
 
 export default function PreviewPanel() {
   const { t } = useTranslation();
@@ -51,6 +49,8 @@ export default function PreviewPanel() {
   const [tokenCount, setTokenCount] = useState(0);
   const [cost, setCost] = useState(0);
   const [trace, setTrace] = useState<TraceRun | null>(null);
+  const [traceView, setTraceView] = useState<TraceRun | null>(null);
+  const [traceHistory, setTraceHistory] = useState<TraceRun[]>([]);
 
   const { sortedNodes, hasCycle } = useMemo(() => {
     const g = new dagre.graphlib.Graph();
@@ -121,88 +121,13 @@ export default function PreviewPanel() {
   };
 
   const generatePreviewViaApi = async (): Promise<TraceRun> => {
-    const rustVars = await Promise.all(
-      variables.map(async v => {
-        if (
-          v.type === "dynamic" &&
-          typeof v.resolver === "string" &&
-          v.resolver.trim().startsWith("chat://")
-        ) {
-          const sessionId = v.resolver.trim().slice("chat://".length);
-          const maxMessages = Number.parseInt(v.value, 10);
-          try {
-            const res = await renderSession({
-              sessionId,
-              maxMessages: Number.isFinite(maxMessages)
-                ? maxMessages
-                : undefined,
-            });
-            return { id: v.id, name: v.name, value: res.value };
-          } catch (e) {
-            return { id: v.id, name: v.name, value: `[${v.name}:chat_error]` };
-          }
-        }
-
-        if (
-          v.type === "dynamic" &&
-          typeof v.resolver === "string" &&
-          v.resolver.trim().startsWith("sql://") &&
-          v.value.trim().length
-        ) {
-          const dataSourceId = v.resolver.trim().slice("sql://".length);
-          try {
-            const res = await sqlQuery({
-              dataSourceId,
-              query: v.value,
-              rowLimit: 1,
-            });
-            return {
-              id: v.id,
-              name: v.name,
-              value: res.value,
-            };
-          } catch (e) {
-            return {
-              id: v.id,
-              name: v.name,
-              value: `[${v.name}:sql_error]`,
-            };
-          }
-        }
-
-        if (
-          v.type === "dynamic" &&
-          typeof v.resolver === "string" &&
-          v.resolver.trim().startsWith("sqlite://") &&
-          v.value.trim().length
-        ) {
-          try {
-            const res = await sqlQuery({
-              url: v.resolver.trim(),
-              query: v.value,
-              rowLimit: 1,
-            });
-            return {
-              id: v.id,
-              name: v.name,
-              value: res.value,
-            };
-          } catch (e) {
-            return {
-              id: v.id,
-              name: v.name,
-              value: `[${v.name}:sql_error]`,
-            };
-          }
-        }
-
-        return {
-          id: v.id,
-          name: v.name,
-          value: v.value || `[${v.name}]`,
-        };
-      })
-    );
+    const rustVars = variables.map(v => ({
+      id: v.id,
+      name: v.name,
+      type: v.type,
+      value: v.value || `[${v.name}]`,
+      resolver: typeof v.resolver === "string" ? v.resolver : undefined,
+    }));
 
     const rustNodes = sortedNodes.map(node => ({
       id: node.id,
@@ -211,7 +136,7 @@ export default function PreviewPanel() {
       content: node.data.content || "",
     }));
 
-    return executeTrace({
+    return executePreviewTrace({
       nodes: rustNodes,
       variables: rustVars,
       outputStyle: "labeled",
@@ -222,6 +147,8 @@ export default function PreviewPanel() {
     try {
       const trace = await generatePreviewViaApi();
       setTrace(trace);
+      setTraceView(trace);
+      setTraceHistory(prev => [trace, ...prev].slice(0, 10));
       setPreviewText(trace.text);
 
       const tokens = encode(trace.text);
@@ -230,6 +157,7 @@ export default function PreviewPanel() {
       return;
     } catch (e) {
       setTrace(null);
+      setTraceView(null);
     }
 
     try {
@@ -380,13 +308,55 @@ export default function PreviewPanel() {
 
         <TabsContent value="trace" className="flex-1 p-0 m-0 overflow-hidden">
           <ScrollArea className="h-full p-4">
-            {!trace ? (
+            {!(traceView ?? trace) ? (
               <div className="text-xs text-muted-foreground">
                 {t("preview.traceEmpty")}
               </div>
             ) : (
               <div className="space-y-3">
-                {trace.segments.map(seg => (
+                {traceHistory.length > 0 && (
+                  <div className="rounded-md border border-border bg-background/50 p-3">
+                    <div className="font-mono text-xs font-bold text-primary">
+                      {t("preview.runHistory")}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {traceHistory.map((run, idx) => (
+                        <Button
+                          key={`${run.runId}-${idx}`}
+                          size="sm"
+                          variant={
+                            (traceView ?? trace)?.runId === run.runId
+                              ? "secondary"
+                              : "outline"
+                          }
+                          onClick={() => setTraceView(run)}
+                        >
+                          {new Date(Number(run.createdAt) || Date.now()).toLocaleString()}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(traceView ?? trace)!.messages.length > 0 && (
+                  <div className="rounded-md border border-border bg-background/50 p-3">
+                    <div className="font-mono text-xs font-bold text-primary">
+                      {t("preview.traceMessages")}
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {(traceView ?? trace)!.messages.map((m, idx) => (
+                        <div
+                          key={`${m.code}-${idx}`}
+                          className="text-[10px] text-muted-foreground"
+                        >
+                          [{m.severity}] {m.code}: {m.message}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(traceView ?? trace)!.segments.map(seg => (
                   <div
                     key={seg.nodeId}
                     className="rounded-md border border-border bg-background/50 p-3"
@@ -406,6 +376,18 @@ export default function PreviewPanel() {
                     <pre className="mt-2 font-mono text-[10px] whitespace-pre-wrap text-foreground/80 leading-relaxed">
                       {seg.rendered}
                     </pre>
+                    {seg.messages.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {seg.messages.map((m, idx) => (
+                          <div
+                            key={`${seg.nodeId}-${m.code}-${idx}`}
+                            className="text-[10px] text-muted-foreground"
+                          >
+                            [{m.severity}] {m.code}: {m.message}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

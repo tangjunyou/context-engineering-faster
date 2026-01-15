@@ -1,0 +1,61 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly-integrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Start Neo4j
+        run: |
+          docker run -d --rm --name neo4j \
+            -p 7687:7687 \
+            -e NEO4J_AUTH=neo4j/test \
+            neo4j:5
+          for i in $(seq 1 60); do
+            if (echo >/dev/tcp/127.0.0.1/7687) >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "neo4j not ready"
+          docker logs neo4j || true
+          exit 1
+
+      - name: Start Milvus (standalone)
+        run: |
+          docker run -d --rm --name milvus \
+            -p 19530:19530 \
+            -p 9091:9091 \
+            milvusdb/milvus:v2.6.0 \
+            milvus run standalone
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:9091/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "milvus not ready"
+          docker logs milvus || true
+          exit 1
+
+      - name: Run nightly integration tests (server-rs)
+        env:
+          DATA_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          NEO4J_URI: "127.0.0.1:7687"
+          NEO4J_USER: "neo4j"
+          NEO4J_PASS: "test"
+          MILVUS_BASE_URL: "http://127.0.0.1:19530"
+          MILVUS_TOKEN: ""
+        run: |
+          cargo test --manifest-path server-rs/Cargo.toml --features neo4j,milvus
+          cargo test --manifest-path server-rs/Cargo.toml --features neo4j,milvus -- --ignored

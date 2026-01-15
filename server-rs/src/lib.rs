@@ -14,7 +14,9 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use context_engine::{render_with_trace, EngineNode, OutputStyle, Variable};
+use context_engine::{
+    render_with_trace, EngineNode, OutputStyle, TraceMessage, TraceSeverity, Variable,
+};
 use flate2::{write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
 use tower::service_fn;
@@ -114,17 +116,22 @@ fn build_app_with_state(
         .route("/healthz", get(healthz))
         .route("/projects", get(list_projects).post(create_project))
         .route("/projects/{id}", get(get_project).put(upsert_project))
+        .route("/datasources", get(list_datasources).post(create_datasource))
         .route(
-            "/datasources",
-            get(list_datasources).post(create_datasource),
+            "/datasources/{id}",
+            get(get_datasource).put(update_datasource).delete(delete_datasource),
         )
-        .route("/datasources/{id}", get(get_datasource))
         .route("/datasources/{id}/test", post(test_datasource))
         .route("/datasources/{id}/tables", get(list_datasource_tables))
+        .route(
+            "/datasources/{id}/tables/{table}/columns",
+            get(list_datasource_table_columns),
+        )
         .route("/sessions", get(list_sessions).post(create_session))
         .route("/sessions/{id}", get(get_session))
         .route("/sessions/{id}/messages", post(append_messages))
         .route("/sessions/{id}/render", post(render_session))
+        .route("/preview", post(execute_preview))
         .route("/execute", post(execute))
         .route("/sql/query", post(sql_query))
         .fallback(api_not_found)
@@ -256,7 +263,7 @@ fn data_dir_from_env() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("data"))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ProjectNode {
     id: String,
@@ -289,6 +296,20 @@ struct DataSourceCreateRequest {
     name: String,
     driver: String,
     url: String,
+    username: Option<String>,
+    password: Option<String>,
+    token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DataSourceUpdateRequest {
+    name: Option<String>,
+    driver: Option<String>,
+    url: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
+    token: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -316,6 +337,24 @@ struct DataSourceStored {
 struct ExecuteRequest {
     nodes: Vec<ProjectNode>,
     variables: Vec<Variable>,
+    output_style: OutputStyle,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VariableSpec {
+    id: String,
+    name: String,
+    r#type: String,
+    value: String,
+    resolver: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ExecutePreviewRequest {
+    nodes: Vec<ProjectNode>,
+    variables: Vec<VariableSpec>,
     output_style: OutputStyle,
 }
 
@@ -372,7 +411,32 @@ async fn create_datasource(
     };
 
     let id = format!("ds_{}", now_ms());
-    let url_enc = match crypto::encrypt_to_base64(&key, req.url.as_bytes()) {
+    let payload = if req.driver == "neo4j" {
+        let (Some(username), Some(password)) = (req.username.as_deref(), req.password.as_deref())
+        else {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "missing_credentials" })),
+            )
+                .into_response();
+        };
+        serde_json::json!({
+            "uri": req.url,
+            "username": username,
+            "password": password,
+        })
+        .to_string()
+    } else if req.driver == "milvus" {
+        serde_json::json!({
+            "baseUrl": req.url,
+            "token": req.token,
+        })
+        .to_string()
+    } else {
+        req.url
+    };
+
+    let url_enc = match crypto::encrypt_to_base64(&key, payload.as_bytes()) {
         Ok(v) => v,
         Err(err) => {
             return (
@@ -440,6 +504,172 @@ async fn get_datasource(
         .into_response()
 }
 
+async fn update_datasource(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<DataSourceUpdateRequest>,
+) -> axum::response::Response {
+    let mut stored = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+
+    let DataSourceUpdateRequest {
+        name,
+        driver,
+        url,
+        username,
+        password,
+        token,
+    } = req;
+
+    if let Some(name) = name {
+        stored.name = name;
+    }
+    if let Some(driver) = driver {
+        stored.driver = driver;
+    }
+
+    if stored.driver == "neo4j" {
+        if url.is_some() || username.is_some() || password.is_some() {
+            let (Some(uri), Some(username), Some(password)) = (url, username, password) else {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "missing_credentials" })),
+                )
+                    .into_response();
+            };
+            let key = match crypto::load_data_key_from_env() {
+                Ok(k) => k,
+                Err(err) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({ "error": "missing_data_key", "message": err.to_string() })),
+                    )
+                        .into_response();
+                }
+            };
+            let payload = serde_json::json!({
+                "uri": uri,
+                "username": username,
+                "password": password,
+            })
+            .to_string();
+            let url_enc = match crypto::encrypt_to_base64(&key, payload.as_bytes()) {
+                Ok(v) => v,
+                Err(err) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({ "error": "encrypt_failed", "message": err.to_string() })),
+                    )
+                        .into_response();
+                }
+            };
+            stored.url_enc = url_enc;
+        }
+    } else if stored.driver == "milvus" {
+        if url.is_some() || token.is_some() {
+            let Some(base_url) = url else {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "missing_url" })),
+                )
+                    .into_response();
+            };
+            let key = match crypto::load_data_key_from_env() {
+                Ok(k) => k,
+                Err(err) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({ "error": "missing_data_key", "message": err.to_string() })),
+                    )
+                        .into_response();
+                }
+            };
+            let payload = serde_json::json!({
+                "baseUrl": base_url,
+                "token": token,
+            })
+            .to_string();
+            let url_enc = match crypto::encrypt_to_base64(&key, payload.as_bytes()) {
+                Ok(v) => v,
+                Err(err) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({ "error": "encrypt_failed", "message": err.to_string() })),
+                    )
+                        .into_response();
+                }
+            };
+            stored.url_enc = url_enc;
+        }
+    } else if let Some(url) = url {
+        let key = match crypto::load_data_key_from_env() {
+            Ok(k) => k,
+            Err(err) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": "missing_data_key", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+        let url_enc = match crypto::encrypt_to_base64(&key, url.as_bytes()) {
+            Ok(v) => v,
+            Err(err) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": "encrypt_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+        stored.url_enc = url_enc;
+    }
+
+    stored.updated_at = now_ms().to_string();
+    if let Err(err) = write_datasource(&state, &stored).await {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": "write_failed", "message": err.to_string() })),
+        )
+            .into_response();
+    }
+
+    (
+        StatusCode::OK,
+        Json(DataSourcePublic {
+            id: stored.id,
+            name: stored.name,
+            driver: stored.driver,
+            url: "<redacted>".to_string(),
+            updated_at: stored.updated_at,
+        }),
+    )
+        .into_response()
+}
+
+async fn delete_datasource(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> axum::response::Response {
+    let path = state.data_dir.join("datasources").join(format!("{id}.json"));
+    match tokio::fs::remove_file(&path).await {
+        Ok(_) => (StatusCode::NO_CONTENT, Body::empty()).into_response(),
+        Err(_) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "not_found", "id": id })),
+        )
+            .into_response(),
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DataSourceTestResponse {
@@ -450,24 +680,81 @@ async fn test_datasource(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> axum::response::Response {
-    let url = match decrypt_datasource_url(&state, &id).await {
-        Ok(url) => url,
-        Err(err) => {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
             return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
             )
                 .into_response();
         }
     };
 
-    match connectors::sql::test_connection(&url).await {
-        Ok(_) => (StatusCode::OK, Json(DataSourceTestResponse { ok: true })).into_response(),
-        Err(err) => (
+    if is_sql_driver(&driver) {
+        let url = match decrypt_datasource_url(&state, &id).await {
+            Ok(url) => url,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+        match connectors::sql::test_connection(&url).await {
+            Ok(_) => (StatusCode::OK, Json(DataSourceTestResponse { ok: true })).into_response(),
+            Err(err) => (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "connect_failed", "message": err.to_string() })),
+            )
+                .into_response(),
+        }
+    } else if driver == "neo4j" {
+        let cfg = match decrypt_neo4j_config(&state, &id).await {
+            Ok(v) => v,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+        match connectors::neo4j::test_connection(&cfg.uri, &cfg.username, &cfg.password).await {
+            Ok(_) => (StatusCode::OK, Json(DataSourceTestResponse { ok: true })).into_response(),
+            Err(err) => (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "connect_failed", "message": err.to_string() })),
+            )
+                .into_response(),
+        }
+    } else if driver == "milvus" {
+        let cfg = match decrypt_milvus_config(&state, &id).await {
+            Ok(v) => v,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+        let client = connectors::milvus::MilvusRestClient::new(cfg.base_url, cfg.token);
+        match client.list_collections().await {
+            Ok(_) => (StatusCode::OK, Json(DataSourceTestResponse { ok: true })).into_response(),
+            Err(err) => (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "connect_failed", "message": err.to_string() })),
+            )
+                .into_response(),
+        }
+    } else {
+        (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "connect_failed", "message": err.to_string() })),
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
         )
-            .into_response(),
+            .into_response()
     }
 }
 
@@ -481,6 +768,24 @@ async fn list_datasource_tables(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> axum::response::Response {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+    if !is_sql_driver(&driver) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+        )
+            .into_response();
+    }
+
     let url = match decrypt_datasource_url(&state, &id).await {
         Ok(url) => url,
         Err(err) => {
@@ -500,6 +805,91 @@ async fn list_datasource_tables(
         )
             .into_response(),
     }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ColumnInfo {
+    name: String,
+    data_type: String,
+    nullable: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ColumnListResponse {
+    columns: Vec<ColumnInfo>,
+}
+
+async fn list_datasource_table_columns(
+    State(state): State<AppState>,
+    Path((id, table)): Path<(String, String)>,
+) -> axum::response::Response {
+    let stored = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+    if !is_sql_driver(&stored.driver) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": stored.driver })),
+        )
+            .into_response();
+    }
+
+    if !is_safe_table_name(&table) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "invalid_table", "table": table })),
+        )
+            .into_response();
+    }
+
+    let url = match decrypt_datasource_url(&state, &id).await {
+        Ok(url) => url,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let columns = match list_table_columns_for_url(&url, &table).await {
+        Ok(cols) => cols,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "query_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    (StatusCode::OK, Json(ColumnListResponse { columns })).into_response()
+}
+
+fn is_sql_driver(driver: &str) -> bool {
+    matches!(driver, "sqlite" | "postgres" | "mysql")
+}
+
+fn is_safe_table_name(name: &str) -> bool {
+    let name = name.trim();
+    if name.is_empty() || name.len() > 128 {
+        return false;
+    }
+    name.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.')
+        && !name.starts_with('.')
+        && !name.ends_with('.')
+        && !name.contains("..")
 }
 
 async fn list_tables_for_url(url: &str) -> anyhow::Result<Vec<String>> {
@@ -532,6 +922,37 @@ async fn decrypt_datasource_url(state: &AppState, id: &str) -> anyhow::Result<St
     let stored = load_datasource(state, id).await?;
     let bytes = crypto::decrypt_from_base64(&key, &stored.url_enc)?;
     Ok(String::from_utf8(bytes)?)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Neo4jConfig {
+    uri: String,
+    username: String,
+    password: String,
+}
+
+async fn decrypt_neo4j_config(state: &AppState, id: &str) -> anyhow::Result<Neo4jConfig> {
+    let key = crypto::load_data_key_from_env()?;
+    let stored = load_datasource(state, id).await?;
+    let bytes = crypto::decrypt_from_base64(&key, &stored.url_enc)?;
+    let text = String::from_utf8(bytes)?;
+    Ok(serde_json::from_str(&text)?)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MilvusConfig {
+    base_url: String,
+    token: Option<String>,
+}
+
+async fn decrypt_milvus_config(state: &AppState, id: &str) -> anyhow::Result<MilvusConfig> {
+    let key = crypto::load_data_key_from_env()?;
+    let stored = load_datasource(state, id).await?;
+    let bytes = crypto::decrypt_from_base64(&key, &stored.url_enc)?;
+    let text = String::from_utf8(bytes)?;
+    Ok(serde_json::from_str(&text)?)
 }
 
 async fn load_datasource(state: &AppState, id: &str) -> anyhow::Result<DataSourceStored> {
@@ -840,6 +1261,19 @@ async fn render_session(
     };
 
     let max = req.max_messages.unwrap_or(20) as usize;
+    let out = render_session_as_text(&s, max);
+
+    (
+        StatusCode::OK,
+        Json(RenderSessionResponse {
+            value: out,
+        }),
+    )
+        .into_response()
+}
+
+fn render_session_as_text(s: &Session, max_messages: usize) -> String {
+    let max = max_messages.min(200);
     let slice = if s.messages.len() > max {
         &s.messages[s.messages.len() - max..]
     } else {
@@ -852,6 +1286,7 @@ async fn render_session(
             "user" => "[User]",
             "assistant" => "[Assistant]",
             "system" => "[System]",
+            "tool" => "[Tool]",
             other => other,
         };
         out.push_str(role);
@@ -859,14 +1294,7 @@ async fn render_session(
         out.push_str(m.content.trim());
         out.push('\n');
     }
-
-    (
-        StatusCode::OK,
-        Json(RenderSessionResponse {
-            value: out.trim().to_string(),
-        }),
-    )
-        .into_response()
+    out.trim().to_string()
 }
 
 async fn load_session(state: &AppState, id: &str) -> anyhow::Result<Session> {
@@ -904,6 +1332,272 @@ async fn execute(Json(req): Json<ExecuteRequest>) -> axum::response::Response {
     let now = now_ms().to_string();
     let trace = render_with_trace(&nodes, &vars, req.output_style, &format!("run_{now}"), &now);
     (StatusCode::OK, Json(trace)).into_response()
+}
+
+async fn execute_preview(
+    State(state): State<AppState>,
+    Json(req): Json<ExecutePreviewRequest>,
+) -> axum::response::Response {
+    let mut vars = HashMap::<String, String>::new();
+    let mut messages = Vec::<TraceMessage>::new();
+
+    for v in req.variables.iter() {
+        match resolve_variable_value(&state, v).await {
+            Ok(value) => {
+                vars.insert(v.name.clone(), value);
+            }
+            Err(err) => {
+                vars.insert(v.name.clone(), format!("[{}]", v.name));
+                messages.push(TraceMessage {
+                    severity: TraceSeverity::Warn,
+                    code: "variable_resolve_failed".to_string(),
+                    message: format!("变量 {} 解析失败：{}", v.name, err),
+                });
+            }
+        }
+    }
+
+    let nodes = req
+        .nodes
+        .into_iter()
+        .map(|n| EngineNode {
+            id: n.id,
+            label: n.label,
+            kind: kind_from_string(&n.kind),
+            content: n.content,
+        })
+        .collect::<Vec<_>>();
+
+    let now = now_ms().to_string();
+    let mut trace =
+        render_with_trace(&nodes, &vars, req.output_style, &format!("run_{now}"), &now);
+    trace.messages.extend(messages);
+    (StatusCode::OK, Json(trace)).into_response()
+}
+
+async fn resolve_variable_value(state: &AppState, v: &VariableSpec) -> anyhow::Result<String> {
+    if v.r#type != "dynamic" {
+        return Ok(v.value.clone());
+    }
+
+    let resolver = v.resolver.as_deref().unwrap_or("").trim();
+    if resolver.starts_with("chat://") {
+        let session_id = resolver.trim_start_matches("chat://");
+        let max_messages = v.value.trim().parse::<usize>().unwrap_or(20);
+        let s = load_session(state, session_id).await?;
+        return Ok(render_session_as_text(&s, max_messages));
+    }
+
+    if resolver.starts_with("sql://") && !v.value.trim().is_empty() {
+        let data_source_id = resolver.trim_start_matches("sql://");
+        let url = decrypt_datasource_url(state, data_source_id).await?;
+        return resolve_sql_value(&url, &v.value).await;
+    }
+
+    if resolver.starts_with("sqlite://") && !v.value.trim().is_empty() {
+        return resolve_sql_value(resolver, &v.value).await;
+    }
+
+    if resolver.starts_with("neo4j://") && !v.value.trim().is_empty() {
+        let data_source_id = resolver.trim_start_matches("neo4j://");
+        return resolve_neo4j_value(state, data_source_id, &v.value).await;
+    }
+
+    if resolver.starts_with("milvus://") {
+        let data_source_id = resolver.trim_start_matches("milvus://");
+        return resolve_milvus_value(state, data_source_id, &v.value).await;
+    }
+
+    Ok(v.value.clone())
+}
+
+async fn resolve_sql_value(url: &str, query: &str) -> anyhow::Result<String> {
+    let query = query.trim();
+    let lower = query.to_ascii_lowercase();
+    if !(lower.starts_with("select") || lower.starts_with("with")) {
+        anyhow::bail!("readonly_required");
+    }
+    let rows = query_any_rows(url, query, 1).await?;
+    Ok(rows
+        .first()
+        .and_then(|m| m.values().next())
+        .map(|v| match v {
+            serde_json::Value::Null => "".to_string(),
+            serde_json::Value::Bool(b) => b.to_string(),
+            serde_json::Value::Number(n) => n.to_string(),
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+        .unwrap_or_default())
+}
+
+#[cfg(feature = "neo4j")]
+async fn resolve_neo4j_value(
+    state: &AppState,
+    data_source_id: &str,
+    cypher: &str,
+) -> anyhow::Result<String> {
+    use neo4rs::{query, Graph, Row as _};
+
+    let cfg = decrypt_neo4j_config(state, data_source_id).await?;
+    let graph = Graph::new(&cfg.uri, &cfg.username, &cfg.password)?;
+
+    let cypher = cypher.trim();
+    let (cypher, params) = if cypher.starts_with('{') {
+        let json: serde_json::Value = serde_json::from_str(cypher)?;
+        let cypher = json
+            .get("cypher")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("missing_cypher"))?
+            .to_string();
+        let params = json.get("params").cloned().unwrap_or(serde_json::Value::Null);
+        (cypher, params)
+    } else {
+        (cypher.to_string(), serde_json::Value::Null)
+    };
+
+    let mut q = query(&cypher);
+    if let Some(obj) = params.as_object() {
+        for (k, v) in obj {
+            match v {
+                serde_json::Value::Null => {}
+                serde_json::Value::Bool(b) => {
+                    q = q.param(k, *b);
+                }
+                serde_json::Value::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        q = q.param(k, i);
+                    } else if let Some(f) = n.as_f64() {
+                        q = q.param(k, f);
+                    }
+                }
+                serde_json::Value::String(s) => {
+                    q = q.param(k, s.as_str());
+                }
+                other => {
+                    q = q.param(k, other.to_string());
+                }
+            }
+        }
+    }
+
+    let mut result = graph.execute(q).await?;
+    let Some(row) = result.next().await? else {
+        return Ok(String::new());
+    };
+
+    if let Ok(v) = row.get::<String>("value") {
+        return Ok(v);
+    }
+    if let Ok(v) = row.get::<i64>("value") {
+        return Ok(v.to_string());
+    }
+    if let Ok(v) = row.get::<f64>("value") {
+        return Ok(v.to_string());
+    }
+    if let Ok(v) = row.get::<bool>("value") {
+        return Ok(v.to_string());
+    }
+
+    Ok("<unprintable>".to_string())
+}
+
+#[cfg(not(feature = "neo4j"))]
+async fn resolve_neo4j_value(
+    _state: &AppState,
+    _data_source_id: &str,
+    _cypher: &str,
+) -> anyhow::Result<String> {
+    anyhow::bail!("feature_not_enabled")
+}
+
+#[cfg(feature = "milvus")]
+async fn resolve_milvus_value(
+    state: &AppState,
+    data_source_id: &str,
+    op: &str,
+) -> anyhow::Result<String> {
+    let cfg = decrypt_milvus_config(state, data_source_id).await?;
+    let client = connectors::milvus::MilvusRestClient::new(cfg.base_url, cfg.token);
+
+    let op = op.trim();
+    if op.is_empty() || op.eq_ignore_ascii_case("list_collections") {
+        let json = client.list_collections().await?;
+        let names = json
+            .get("data")
+            .and_then(|v| v.get("collectionNames"))
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .unwrap_or_default();
+        return Ok(names);
+    }
+
+    if op.starts_with('{') {
+        let mut json: serde_json::Value = serde_json::from_str(op)?;
+        let op_name = json
+            .get("op")
+            .and_then(|v| v.as_str())
+            .unwrap_or("list_collections");
+        if op_name.eq_ignore_ascii_case("list_collections") {
+            let json = client.list_collections().await?;
+            let names = json
+                .get("data")
+                .and_then(|v| v.get("collectionNames"))
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default();
+            return Ok(names);
+        }
+        if op_name.eq_ignore_ascii_case("insert") {
+            if let Some(obj) = json.as_object_mut() {
+                obj.remove("op");
+            }
+            let resp = client.insert_entities(json).await?;
+            if let Some(n) = resp
+                .get("data")
+                .and_then(|v| v.get("insertCount"))
+                .and_then(|v| v.as_i64())
+            {
+                return Ok(n.to_string());
+            }
+            return Ok(resp.to_string());
+        }
+        if op_name.eq_ignore_ascii_case("search") {
+            if let Some(obj) = json.as_object_mut() {
+                obj.remove("op");
+            }
+            let resp = client.search_entities(json).await?;
+            return Ok(resp.to_string());
+        }
+        if op_name.eq_ignore_ascii_case("query") {
+            if let Some(obj) = json.as_object_mut() {
+                obj.remove("op");
+            }
+            let resp = client.query_entities(json).await?;
+            return Ok(resp.to_string());
+        }
+    }
+
+    anyhow::bail!("unsupported_op")
+}
+
+#[cfg(not(feature = "milvus"))]
+async fn resolve_milvus_value(
+    _state: &AppState,
+    _data_source_id: &str,
+    _op: &str,
+) -> anyhow::Result<String> {
+    anyhow::bail!("feature_not_enabled")
 }
 
 fn kind_from_string(kind: &str) -> context_engine::NodeKind {
@@ -1007,13 +1701,33 @@ async fn query_any_rows(
     limit: i64,
 ) -> anyhow::Result<Vec<HashMap<String, serde_json::Value>>> {
     use sqlx::{Column, Connection, Row};
+    use tokio::time::{timeout, Duration};
 
     sqlx::any::install_default_drivers();
-    let mut conn = <sqlx::AnyConnection as Connection>::connect(url).await?;
+    let connect_timeout_ms = std::env::var("SQL_CONNECT_TIMEOUT_MS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(5_000);
+    let query_timeout_ms = std::env::var("SQL_QUERY_TIMEOUT_MS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(10_000);
+
+    let mut conn = timeout(
+        Duration::from_millis(connect_timeout_ms),
+        <sqlx::AnyConnection as Connection>::connect(url),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("connect_timeout"))??;
     let sql = format!("SELECT * FROM ({query}) AS t LIMIT {limit}");
     let mut out = Vec::new();
 
-    let rows = sqlx::query(&sql).fetch_all(&mut conn).await?;
+    let rows = timeout(
+        Duration::from_millis(query_timeout_ms),
+        sqlx::query(&sql).fetch_all(&mut conn),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("query_timeout"))??;
     for row in rows {
         let mut map = HashMap::<String, serde_json::Value>::new();
         for (idx, col) in row.columns().iter().enumerate() {
@@ -1026,6 +1740,105 @@ async fn query_any_rows(
 
     conn.close().await?;
     Ok(out)
+}
+
+async fn list_table_columns_for_url(url: &str, table: &str) -> anyhow::Result<Vec<ColumnInfo>> {
+    sqlx::any::install_default_drivers();
+    let mut out = Vec::<ColumnInfo>::new();
+
+    if url.starts_with("sqlite:") {
+        use sqlx::{Connection, Row as _};
+
+        let mut conn = <sqlx::AnyConnection as Connection>::connect(url).await?;
+        let sql = format!("PRAGMA table_info({table})");
+        let rows = sqlx::query(&sql).fetch_all(&mut conn).await?;
+        for row in rows {
+            let name: String = row.try_get("name").unwrap_or_default();
+            let data_type: String = row.try_get("type").unwrap_or_default();
+            let notnull: i64 = row.try_get("notnull").unwrap_or(0);
+            out.push(ColumnInfo {
+                name,
+                data_type,
+                nullable: notnull == 0,
+            });
+        }
+        conn.close().await?;
+        return Ok(out);
+    }
+
+    if url.starts_with("postgres:") || url.starts_with("postgresql:") {
+        use sqlx::{Connection, Row as _};
+
+        let (schema, table) = split_table_name(table);
+        let mut conn = <sqlx::AnyConnection as Connection>::connect(url).await?;
+        let rows = sqlx::query(
+            r#"
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = $1 AND table_name = $2
+            ORDER BY ordinal_position
+            "#,
+        )
+        .bind(schema)
+        .bind(table)
+        .fetch_all(&mut conn)
+        .await?;
+        for row in rows {
+            let name: String = row.try_get("column_name").unwrap_or_default();
+            let data_type: String = row.try_get("data_type").unwrap_or_default();
+            let is_nullable: String = row.try_get("is_nullable").unwrap_or_else(|_| "YES".into());
+            out.push(ColumnInfo {
+                name,
+                data_type,
+                nullable: is_nullable.eq_ignore_ascii_case("yes"),
+            });
+        }
+        conn.close().await?;
+        return Ok(out);
+    }
+
+    if url.starts_with("mysql:") {
+        use sqlx::{Connection, Row as _};
+
+        let (schema, table) = split_table_name(table);
+        let mut conn = <sqlx::AnyConnection as Connection>::connect(url).await?;
+        let rows = sqlx::query(
+            r#"
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = COALESCE(?, DATABASE()) AND table_name = ?
+            ORDER BY ordinal_position
+            "#,
+        )
+        .bind(if schema == "public" { None::<String> } else { Some(schema) })
+        .bind(table)
+        .fetch_all(&mut conn)
+        .await?;
+        for row in rows {
+            let name: String = row.try_get("column_name").unwrap_or_default();
+            let data_type: String = row.try_get("data_type").unwrap_or_default();
+            let is_nullable: String = row.try_get("is_nullable").unwrap_or_else(|_| "YES".into());
+            out.push(ColumnInfo {
+                name,
+                data_type,
+                nullable: is_nullable.eq_ignore_ascii_case("yes"),
+            });
+        }
+        conn.close().await?;
+        return Ok(out);
+    }
+
+    anyhow::bail!("unsupported_url")
+}
+
+fn split_table_name(input: &str) -> (String, String) {
+    let mut parts = input.splitn(2, '.');
+    let a = parts.next().unwrap_or("public").to_string();
+    let b = parts.next();
+    match b {
+        Some(table) => (a, table.to_string()),
+        None => ("public".to_string(), a),
+    }
 }
 
 fn any_row_value_to_json(row: &sqlx::any::AnyRow, idx: usize) -> serde_json::Value {

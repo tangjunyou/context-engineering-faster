@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import {
   createDataSource,
+  deleteDataSource,
   listDataSources,
   testDataSource,
 } from "@/lib/api/datasources";
@@ -84,6 +85,18 @@ export default function DataSourceManager() {
       else toast.error(t("dataSourceManager.testFailed"));
     } catch (e) {
       toast.error(t("dataSourceManager.testFailed"));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = window.confirm(t("dataSourceManager.deleteConfirm"));
+    if (!ok) return;
+    try {
+      await deleteDataSource(id);
+      setItems(prev => prev.filter(v => v.id !== id));
+      toast.success(t("dataSourceManager.deleted"));
+    } catch (e) {
+      toast.error(t("dataSourceManager.deleteFailed"));
     }
   };
 
@@ -182,13 +195,22 @@ export default function DataSourceManager() {
                   <div className="font-mono text-xs font-bold text-primary">
                     {ds.name}
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void handleTest(ds.id)}
-                  >
-                    {t("dataSourceManager.test")}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleTest(ds.id)}
+                    >
+                      {t("dataSourceManager.test")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => void handleDelete(ds.id)}
+                    >
+                      {t("dataSourceManager.delete")}
+                    </Button>
+                  </div>
                 </div>
                 <div className="mt-1 text-[10px] text-muted-foreground">
                   {ds.driver} · {ds.id}

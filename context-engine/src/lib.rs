@@ -191,37 +191,37 @@ fn interpolate_template(
     let mut out = String::with_capacity(template.len());
     let mut missing = Vec::<String>::new();
 
-    let bytes = template.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'{' && i + 1 < bytes.len() && bytes[i + 1] == b'{' {
-            let start = i;
-            i += 2;
-            let name_start = i;
-
-            while i + 1 < bytes.len() && !(bytes[i] == b'}' && bytes[i + 1] == b'}') {
-                i += 1;
-            }
-
-            if i + 1 >= bytes.len() {
-                out.push_str(&template[start..]);
+    let mut rest = template;
+    loop {
+        match rest.find("{{") {
+            None => {
+                out.push_str(rest);
                 break;
             }
-
-            let name = template[name_start..i].trim();
-            let placeholder = &template[start..i + 2];
-            if name.is_empty() {
-                out.push_str(placeholder);
-            } else if let Some(value) = variables.get(name) {
-                out.push_str(value);
-            } else {
-                missing.push(name.to_string());
-                out.push_str(placeholder);
+            Some(start) => {
+                out.push_str(&rest[..start]);
+                let after_start = &rest[start + 2..];
+                match after_start.find("}}") {
+                    None => {
+                        // unmatched {{, copy the remainder verbatim
+                        out.push_str(&rest[start..]);
+                        break;
+                    }
+                    Some(end) => {
+                        let placeholder = &rest[start..start + 2 + end + 2];
+                        let name = after_start[..end].trim();
+                        if name.is_empty() {
+                            out.push_str(placeholder);
+                        } else if let Some(value) = variables.get(name) {
+                            out.push_str(value);
+                        } else {
+                            missing.push(name.to_string());
+                            out.push_str(placeholder);
+                        }
+                        rest = &after_start[end + 2..];
+                    }
+                }
             }
-            i += 2;
-        } else {
-            out.push(bytes[i] as char);
-            i += 1;
         }
     }
 
@@ -263,6 +263,22 @@ mod tests {
         assert_eq!(trace.segments.len(), 2);
         assert!(trace.segments[0].missing_variables.is_empty());
         assert!(trace.segments[1].missing_variables.is_empty());
+    }
+
+    #[test]
+    fn interpolates_unicode_without_mojibake() {
+        let nodes = vec![EngineNode {
+            id: "n1".to_string(),
+            label: "系统提示词".to_string(),
+            kind: NodeKind::System,
+            content: "你是一个专业的智能助手。请使用 {{language}} 回答。".to_string(),
+        }];
+        let vars = HashMap::from([("language".to_string(), "中文".to_string())]);
+
+        let trace = render_with_trace(&nodes, &vars, OutputStyle::Labeled, "t1", "now");
+        assert!(trace.text.contains("你是一个专业的智能助手。"));
+        assert!(trace.text.contains("请使用 中文 回答。"));
+        assert!(!trace.text.contains("ä½"));
     }
 
     #[test]

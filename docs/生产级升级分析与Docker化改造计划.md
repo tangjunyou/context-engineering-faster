@@ -1,23 +1,30 @@
-## 现状结论（基于仓库扫读）
+## 重要说明
+- 本文档包含历史阶段的“问题清单/计划稿”，其中关于 Docker/CI/测试缺失等描述已不再准确。
+- 最新事实来源建议以以下内容为准：
+  - docs/上下文工程项目现状分析与修复计划.md
+  - docs/测试文档/验收与CI映射.md
+  - .github/workflows/*.yml、Dockerfile、server-rs/tests/*
+
+## 现状结论（与当前仓库对齐）
 - 技术栈已满足“Rust + TypeScript”：后端是 Axum（[server-rs/src/main.rs](file:///Users/jingshun/Desktop/上下文工程项目/server-rs/src/main.rs)、[server-rs/src/lib.rs](file:///Users/jingshun/Desktop/上下文工程项目/server-rs/src/lib.rs)），前端是 Vite + React + TS（[package.json](file:///Users/jingshun/Desktop/上下文工程项目/package.json)）。
 - 当前后端本质是“静态站点托管 + SPA 回退”，前端主要能力在浏览器 WASM 引擎（[context-engine/src/lib.rs](file:///Users/jingshun/Desktop/上下文工程项目/context-engine/src/lib.rs)、[client/src/lib/wasm](file:///Users/jingshun/Desktop/上下文工程项目/client/src/lib/wasm)）。
-- 当前项目缺少生产级关键要素：Docker/CI、国际化体系、API 路由语义清晰性、安全与可观测性强化、构建产物一致性。
+- 当前仓库已具备生产级关键基线（Docker/CI/测试与容器运行断言等），但仍需继续加强：Neo4j/Milvus 的完整能力与 nightly 集成、资源限制与安全门禁的系统化覆盖、跨平台分发与可回放执行历史等。
 
 ## 生产级问题清单（按风险优先级）
 ### 1) 路由与安全
 - /api 被当作“伪接口”：`/api/**` 全部回退为 `index.html`（[server-rs/src/lib.rs](file:///Users/jingshun/Desktop/上下文工程项目/server-rs/src/lib.rs#L83-L85)），但前端已拼出 OAuth 回调地址 `/api/oauth/callback`（[client/src/const.ts](file:///Users/jingshun/Desktop/上下文工程项目/client/src/const.ts)），未来一旦接入真实鉴权会直接出错。
 - CORS 过宽：对 `/api` 允许 `Any origin + Any headers`（[server-rs/src/lib.rs](file:///Users/jingshun/Desktop/上下文工程项目/server-rs/src/lib.rs#L23-L34)），若后续上线真实接口会放大攻击面。
 
-### 2) 构建与可复现
-- 缺少 Dockerfile / compose（全仓未发现），生产部署不可复制。
+### 2) 构建与可复现（已落地为主，保留为对照）
+- Dockerfile / docker-compose 已存在，且 CI 已覆盖容器构建与运行时关键断言。
 - WASM 产物“双份”存在（[context-engine/pkg](file:///Users/jingshun/Desktop/上下文工程项目/context-engine/pkg) 与 [client/src/lib/wasm](file:///Users/jingshun/Desktop/上下文工程项目/client/src/lib/wasm)），容易出现“Rust 源码与前端使用的 wasm 不一致”。
 - 仓库内出现 target/dist 等构建目录（虽已在 .gitignore 中忽略），需要确保不进入 Docker build context，避免镜像膨胀与缓存失效。
 
 ### 3) 国际化（中英双语）缺失
 - 项目目前没有完整 i18n 框架；仅在少数组件存在 locale 相关字符串（例如 calendar 使用 `toLocaleString`）。
 
-### 4) 测试与质量门禁缺失
-- 依赖里有 vitest，但仓库几乎没有测试用例与 CI 工作流（.github/workflows 不存在）。
+### 4) 测试与质量门禁（已落地并持续加强）
+- 已存在前端/后端/容器层 CI 门禁，并补齐了“规格→测试→CI”映射与关键安全/资源限制回归用例。
 
 ## 技术选型调研（已用 Context7）
 ### 后端：Axum + Tower 生态（维持现状，并补齐生产能力）
@@ -90,4 +97,3 @@
 - DevTools MCP 的完整测试记录与问题清单
 
 如果你确认该计划，我将退出计划模式并开始逐项落地实现与 DevTools 验收。
-
