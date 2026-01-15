@@ -12,6 +12,7 @@ import { useStore } from "@/lib/store";
 import type { ContextFlowNode, NodeType } from "@/lib/types";
 import ContextNode from "@/components/ContextNode";
 import VariableManager from "@/components/VariableManager";
+import DataSourceManager from "@/components/DataSourceManager";
 import PropertyInspector from "@/components/PropertyInspector";
 import PreviewPanel from "@/components/PreviewPanel";
 import {
@@ -20,7 +21,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
-import { BrainCircuit, Layers, Box, Settings } from "lucide-react";
+import { BrainCircuit, Layers, Box, Database, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shallow } from "zustand/shallow";
 
@@ -52,7 +53,7 @@ export default function Home() {
   );
 
   const [activeLeftPanel, setActiveLeftPanel] = useState<
-    "variables" | "components"
+    "variables" | "components" | "datasources"
   >("variables");
   const [activeRightPanel, setActiveRightPanel] = useState<
     "properties" | "preview"
@@ -145,11 +146,20 @@ export default function Home() {
               >
                 <Layers className="w-3 h-3 mr-2" /> {t("nav.components")}
               </Button>
+              <Button
+                variant="ghost"
+                className={`flex-1 rounded-none h-10 text-xs uppercase tracking-wider ${activeLeftPanel === "datasources" ? "bg-muted text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                onClick={() => setActiveLeftPanel("datasources")}
+              >
+                <Database className="w-3 h-3 mr-2" /> {t("nav.datasources")}
+              </Button>
             </div>
 
             <div className="flex-1 overflow-hidden">
               {activeLeftPanel === "variables" ? (
                 <VariableManager />
+              ) : activeLeftPanel === "datasources" ? (
+                <DataSourceManager />
               ) : (
                 <div className="p-4 grid gap-2">
                   <div className="text-xs font-bold text-muted-foreground mb-2 uppercase">

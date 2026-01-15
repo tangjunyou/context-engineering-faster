@@ -41,6 +41,12 @@ vi.mock("@/lib/wasm/context_engine", () => {
   };
 });
 
+vi.mock("@/lib/api/context-engine", () => ({
+  executeTrace: vi.fn(async () => {
+    throw new Error("api unavailable");
+  }),
+}));
+
 describe("PreviewPanel", () => {
   beforeEach(async () => {
     vi.useFakeTimers();
@@ -130,13 +136,23 @@ describe("PreviewPanel", () => {
           id: "a",
           type: "contextNode",
           position: { x: 0, y: 0 },
-          data: { label: "A", type: "system_prompt", content: "", variables: [] },
+          data: {
+            label: "A",
+            type: "system_prompt",
+            content: "",
+            variables: [],
+          },
         },
         {
           id: "b",
           type: "contextNode",
           position: { x: 0, y: 0 },
-          data: { label: "B", type: "system_prompt", content: "", variables: [] },
+          data: {
+            label: "B",
+            type: "system_prompt",
+            content: "",
+            variables: [],
+          },
         },
       ],
       edges: [

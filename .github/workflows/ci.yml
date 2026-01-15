@@ -6,7 +6,11 @@ on:
 
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +37,11 @@ jobs:
         run: pnpm -s exec vite build
 
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -106,6 +114,12 @@ jobs:
       - name: Verify SPA fallback
         run: |
           curl -fsS http://127.0.0.1:3000/some/route >/dev/null
+      - name: Verify execute trace API
+        run: |
+          curl -fsS http://127.0.0.1:3000/api/execute \
+            -H 'content-type: application/json' \
+            -d '{"nodes":[{"id":"n1","label":"System","kind":"system","content":"Hello {{name}}"}],"variables":[{"id":"v1","name":"name","value":"Alice"}],"outputStyle":"labeled"}' \
+            | tr -d '\r' | grep -q '"segments"'
       - name: Verify cache headers for index.html
         run: |
           curl -fsSI http://127.0.0.1:3000/ | tr -d '\r' | grep -i '^cache-control: no-cache$'
@@ -117,12 +131,10 @@ jobs:
           curl -fsSI "http://127.0.0.1:3000$JS_PATH" | tr -d '\r' | grep -i '^cache-control: public, max-age=31536000, immutable$'
       - name: Verify wasm content-type
         run: |
-          INDEX="$(curl -fsS http://127.0.0.1:3000/)"
-          JS_PATH="$(echo "$INDEX" | grep -oE '/assets/[^"]+\.js' | head -n 1)"
-          JS="$(curl -fsS "http://127.0.0.1:3000$JS_PATH")"
-          WASM_PATH="$(echo "$JS" | grep -oE \"/assets/[^\\\"']+\\.wasm\" | head -n 1)"
-          test -n "$WASM_PATH"
+          WASM_FILE="$(docker exec ceviz sh -lc 'ls /app/public/assets/*.wasm 2>/dev/null | head -n 1')"
+          test -n "$WASM_FILE"
+          WASM_PATH="${WASM_FILE#/app/public}"
           curl -fsSI "http://127.0.0.1:3000$WASM_PATH" | tr -d '\r' | grep -i '^content-type: application/wasm$'
       - name: Stop container
         if: always()
-        run: docker stop ceviz
+        run: docker stop ceviz || true

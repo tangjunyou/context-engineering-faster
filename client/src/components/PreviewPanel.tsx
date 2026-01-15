@@ -10,8 +10,12 @@ import { toast } from "sonner";
 import dagre from "dagre";
 import init, { ContextEngine } from "@/lib/wasm/context_engine";
 import { useTranslation } from "react-i18next";
-import type { ContextFlowNode } from "@/lib/types";
+import type { ContextFlowNode, NodeType } from "@/lib/types";
 import { shallow } from "zustand/shallow";
+import { executeTrace } from "@/lib/api/context-engine";
+import type { TraceRun } from "@shared/trace";
+import { sqlQuery } from "@/lib/api/sql";
+import { renderSession } from "@/lib/api/sessions";
 
 export default function PreviewPanel() {
   const { t } = useTranslation();
@@ -46,6 +50,7 @@ export default function PreviewPanel() {
   const [previewText, setPreviewText] = useState("");
   const [tokenCount, setTokenCount] = useState(0);
   const [cost, setCost] = useState(0);
+  const [trace, setTrace] = useState<TraceRun | null>(null);
 
   const { sortedNodes, hasCycle } = useMemo(() => {
     const g = new dagre.graphlib.Graph();
@@ -94,7 +99,139 @@ export default function PreviewPanel() {
     return engineRef.current;
   };
 
+  const nodeTypeToKind = (type: NodeType): string => {
+    switch (type) {
+      case "system_prompt":
+        return "system";
+      case "user_input":
+        return "user";
+      case "messages":
+        return "assistant";
+      case "tools":
+        return "tool";
+      case "memory":
+        return "memory";
+      case "retrieval":
+        return "retrieval";
+      case "metadata":
+        return "text";
+      default:
+        return "text";
+    }
+  };
+
+  const generatePreviewViaApi = async (): Promise<TraceRun> => {
+    const rustVars = await Promise.all(
+      variables.map(async v => {
+        if (
+          v.type === "dynamic" &&
+          typeof v.resolver === "string" &&
+          v.resolver.trim().startsWith("chat://")
+        ) {
+          const sessionId = v.resolver.trim().slice("chat://".length);
+          const maxMessages = Number.parseInt(v.value, 10);
+          try {
+            const res = await renderSession({
+              sessionId,
+              maxMessages: Number.isFinite(maxMessages)
+                ? maxMessages
+                : undefined,
+            });
+            return { id: v.id, name: v.name, value: res.value };
+          } catch (e) {
+            return { id: v.id, name: v.name, value: `[${v.name}:chat_error]` };
+          }
+        }
+
+        if (
+          v.type === "dynamic" &&
+          typeof v.resolver === "string" &&
+          v.resolver.trim().startsWith("sql://") &&
+          v.value.trim().length
+        ) {
+          const dataSourceId = v.resolver.trim().slice("sql://".length);
+          try {
+            const res = await sqlQuery({
+              dataSourceId,
+              query: v.value,
+              rowLimit: 1,
+            });
+            return {
+              id: v.id,
+              name: v.name,
+              value: res.value,
+            };
+          } catch (e) {
+            return {
+              id: v.id,
+              name: v.name,
+              value: `[${v.name}:sql_error]`,
+            };
+          }
+        }
+
+        if (
+          v.type === "dynamic" &&
+          typeof v.resolver === "string" &&
+          v.resolver.trim().startsWith("sqlite://") &&
+          v.value.trim().length
+        ) {
+          try {
+            const res = await sqlQuery({
+              url: v.resolver.trim(),
+              query: v.value,
+              rowLimit: 1,
+            });
+            return {
+              id: v.id,
+              name: v.name,
+              value: res.value,
+            };
+          } catch (e) {
+            return {
+              id: v.id,
+              name: v.name,
+              value: `[${v.name}:sql_error]`,
+            };
+          }
+        }
+
+        return {
+          id: v.id,
+          name: v.name,
+          value: v.value || `[${v.name}]`,
+        };
+      })
+    );
+
+    const rustNodes = sortedNodes.map(node => ({
+      id: node.id,
+      label: node.data.label,
+      kind: nodeTypeToKind(node.data.type),
+      content: node.data.content || "",
+    }));
+
+    return executeTrace({
+      nodes: rustNodes,
+      variables: rustVars,
+      outputStyle: "labeled",
+    });
+  };
+
   const generatePreview = async () => {
+    try {
+      const trace = await generatePreviewViaApi();
+      setTrace(trace);
+      setPreviewText(trace.text);
+
+      const tokens = encode(trace.text);
+      setTokenCount(tokens.length);
+      setCost((tokens.length / 1000000) * 5.0);
+      return;
+    } catch (e) {
+      setTrace(null);
+    }
+
     try {
       const ok = await ensureWasmReady();
       if (!ok) return;
@@ -115,6 +252,7 @@ export default function PreviewPanel() {
 
       const fullText = engine.process_context(rustNodes);
       setPreviewText(fullText);
+      setTrace(null);
 
       const tokens = encode(fullText);
       setTokenCount(tokens.length);
@@ -203,10 +341,11 @@ export default function PreviewPanel() {
 
       <Tabs defaultValue="preview" className="flex-1 flex flex-col">
         <div className="px-4 pt-2">
-          <TabsList className="w-full grid grid-cols-2">
+          <TabsList className="w-full grid grid-cols-3">
             <TabsTrigger value="preview">
               {t("preview.contextPreview")}
             </TabsTrigger>
+            <TabsTrigger value="trace">{t("preview.trace")}</TabsTrigger>
             <TabsTrigger value="json">{t("preview.jsonStructure")}</TabsTrigger>
           </TabsList>
         </div>
@@ -220,7 +359,9 @@ export default function PreviewPanel() {
               <Alert variant="destructive" className="mb-4">
                 <AlertTriangle />
                 <AlertTitle>{t("preview.cycleTitle")}</AlertTitle>
-                <AlertDescription>{t("preview.cycleDetected")}</AlertDescription>
+                <AlertDescription>
+                  {t("preview.cycleDetected")}
+                </AlertDescription>
               </Alert>
             )}
             <pre className="font-mono text-xs whitespace-pre-wrap text-foreground/80 leading-relaxed">
@@ -237,10 +378,45 @@ export default function PreviewPanel() {
           </Button>
         </TabsContent>
 
+        <TabsContent value="trace" className="flex-1 p-0 m-0 overflow-hidden">
+          <ScrollArea className="h-full p-4">
+            {!trace ? (
+              <div className="text-xs text-muted-foreground">
+                {t("preview.traceEmpty")}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {trace.segments.map(seg => (
+                  <div
+                    key={seg.nodeId}
+                    className="rounded-md border border-border bg-background/50 p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-mono text-xs font-bold text-primary">
+                        {seg.label}
+                      </div>
+                      {seg.missingVariables.length > 0 && (
+                        <div className="text-[10px] text-destructive">
+                          {t("preview.missingVariables", {
+                            names: seg.missingVariables.join(", "),
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <pre className="mt-2 font-mono text-[10px] whitespace-pre-wrap text-foreground/80 leading-relaxed">
+                      {seg.rendered}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
         <TabsContent value="json" className="flex-1 p-0 m-0 overflow-hidden">
           <ScrollArea className="h-full p-4">
             <pre className="font-mono text-[10px] text-muted-foreground">
-              {JSON.stringify({ nodes, edges, variables }, null, 2)}
+              {JSON.stringify({ nodes, edges, variables, trace }, null, 2)}
             </pre>
           </ScrollArea>
         </TabsContent>
