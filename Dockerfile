@@ -4,10 +4,13 @@ WORKDIR /app
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml .prettierignore .prettierrc components.json tsconfig.json vite.config.ts ./
+COPY scripts ./scripts
 COPY client ./client
+COPY context-engine/pkg ./context-engine/pkg
 COPY shared ./shared
 
 RUN pnpm install --frozen-lockfile
+RUN pnpm -s exec tsx scripts/verify-wasm-sync.ts
 RUN pnpm -s exec vite build
 
 FROM rust:1.83-bookworm AS backend-builder

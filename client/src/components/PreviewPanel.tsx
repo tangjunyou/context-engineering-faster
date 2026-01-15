@@ -1,9 +1,10 @@
 import { useStore } from "@/lib/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, RefreshCw, Copy } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { Play, RefreshCw, Copy, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { encode } from "gpt-tokenizer";
 import { toast } from "sonner";
 import dagre from "dagre";
@@ -16,9 +17,22 @@ export default function PreviewPanel() {
   const { t } = useTranslation();
   const [wasmReady, setWasmReady] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [cycleDetected, setCycleDetected] = useState(false);
+  const wasmInitPromiseRef = useRef<Promise<unknown> | null>(null);
+  const engineRef = useRef<ContextEngine | null>(null);
+  const previewDebounceIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    init().then(() => setWasmReady(true));
+    return () => {
+      if (previewDebounceIdRef.current) {
+        window.clearTimeout(previewDebounceIdRef.current);
+        previewDebounceIdRef.current = null;
+      }
+      if (engineRef.current) {
+        engineRef.current.free();
+        engineRef.current = null;
+      }
+    };
   }, []);
   const { nodes, edges, variables } = useStore(
     state => ({
@@ -33,8 +47,7 @@ export default function PreviewPanel() {
   const [tokenCount, setTokenCount] = useState(0);
   const [cost, setCost] = useState(0);
 
-  // Topological sort to determine the order of context blocks
-  const sortedNodes = useMemo(() => {
+  const { sortedNodes, hasCycle } = useMemo(() => {
     const g = new dagre.graphlib.Graph();
     g.setGraph({});
     g.setDefaultEdgeLabel(() => ({}));
@@ -44,28 +57,49 @@ export default function PreviewPanel() {
 
     try {
       const sortedIds = dagre.graphlib.alg.topsort(g) as string[];
-      // Filter out nodes that might not be in the graph anymore or are not context nodes
-      return sortedIds
+      const sortedNodes = sortedIds
         .map((id: string) => nodes.find((n: ContextFlowNode) => n.id === id))
         .filter((n): n is ContextFlowNode => Boolean(n));
+      return { sortedNodes, hasCycle: false };
     } catch (e) {
-      // Fallback if cycle detected or other error
-      console.warn("Cycle detected or graph error", e);
-      return nodes;
+      return { sortedNodes: nodes, hasCycle: true };
     }
   }, [nodes, edges]);
 
   useEffect(() => {
-    generatePreview();
-  }, [sortedNodes, variables, nodes, wasmReady]); // Re-run when structure or data changes
+    setCycleDetected(hasCycle);
+    if (hasCycle) toast.error(t("preview.cycleDetected"));
+  }, [hasCycle, t]);
 
-  const generatePreview = () => {
-    if (!wasmReady) return;
-
+  const ensureWasmReady = async () => {
+    if (wasmReady) return true;
     try {
-      const engine = new ContextEngine();
+      if (!wasmInitPromiseRef.current) {
+        wasmInitPromiseRef.current = init();
+      }
+      await wasmInitPromiseRef.current;
+      setWasmReady(true);
+      return true;
+    } catch (e) {
+      wasmInitPromiseRef.current = null;
+      toast.error(t("preview.wasmInitFailed"));
+      return false;
+    }
+  };
 
-      // Prepare variables for Rust
+  const getEngine = () => {
+    if (!engineRef.current) {
+      engineRef.current = new ContextEngine();
+    }
+    return engineRef.current;
+  };
+
+  const generatePreview = async () => {
+    try {
+      const ok = await ensureWasmReady();
+      if (!ok) return;
+      const engine = getEngine();
+
       const rustVars = variables.map(v => ({
         id: v.id,
         name: v.name,
@@ -73,7 +107,6 @@ export default function PreviewPanel() {
       }));
       engine.set_variables(rustVars);
 
-      // Prepare nodes for Rust
       const rustNodes = sortedNodes.map(node => ({
         id: node.id,
         label: node.data.label,
@@ -83,17 +116,31 @@ export default function PreviewPanel() {
       const fullText = engine.process_context(rustNodes);
       setPreviewText(fullText);
 
-      // Calculate tokens
       const tokens = encode(fullText);
       setTokenCount(tokens.length);
 
-      // Estimate cost (GPT-4o input pricing: $5.00 / 1M tokens)
       setCost((tokens.length / 1000000) * 5.0);
     } catch (e) {
       console.error("WASM Error:", e);
       toast.error(t("preview.wasmFailed"));
     }
   };
+
+  useEffect(() => {
+    if (previewDebounceIdRef.current) {
+      window.clearTimeout(previewDebounceIdRef.current);
+    }
+    previewDebounceIdRef.current = window.setTimeout(() => {
+      void generatePreview();
+    }, 250);
+
+    return () => {
+      if (previewDebounceIdRef.current) {
+        window.clearTimeout(previewDebounceIdRef.current);
+        previewDebounceIdRef.current = null;
+      }
+    };
+  }, [sortedNodes, variables]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(previewText);
@@ -107,17 +154,21 @@ export default function PreviewPanel() {
           {t("preview.title")}
         </h2>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={generatePreview}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void generatePreview()}
+          >
             <RefreshCw className="w-3 h-3 mr-1" /> {t("preview.refresh")}
           </Button>
           <Button
             size="sm"
-            onClick={() => {
+            onClick={async () => {
               if (isRunning) return;
               setIsRunning(true);
               toast.info(t("preview.running"));
               try {
-                generatePreview();
+                await generatePreview();
                 toast.success(t("preview.completed"));
               } finally {
                 setIsRunning(false);
@@ -165,6 +216,13 @@ export default function PreviewPanel() {
           className="flex-1 p-0 m-0 relative overflow-hidden"
         >
           <ScrollArea className="h-full p-4">
+            {cycleDetected && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle />
+                <AlertTitle>{t("preview.cycleTitle")}</AlertTitle>
+                <AlertDescription>{t("preview.cycleDetected")}</AlertDescription>
+              </Alert>
+            )}
             <pre className="font-mono text-xs whitespace-pre-wrap text-foreground/80 leading-relaxed">
               {previewText}
             </pre>

@@ -28,6 +28,10 @@ async fn serves_existing_static_file() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.headers().get("cache-control").unwrap(),
+        "public, max-age=31536000, immutable"
+    );
 
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     assert_eq!(&bytes[..], b"APP");
@@ -48,7 +52,34 @@ async fn falls_back_to_index_for_unknown_routes() {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get("cache-control").unwrap(), "no-cache");
         let bytes = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(&bytes[..], b"INDEX");
     }
+}
+
+#[tokio::test]
+async fn serves_wasm_with_correct_content_type() {
+    let dir = tempdir().unwrap();
+    fs::create_dir_all(dir.path().join("assets")).unwrap();
+    fs::write(dir.path().join("index.html"), "INDEX").unwrap();
+    fs::write(dir.path().join("assets/module.wasm"), b"\0asm").unwrap();
+
+    let app = server_rs::build_app(dir.path().to_path_buf());
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/assets/module.wasm")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.headers().get("content-type").unwrap(),
+        "application/wasm"
+    );
 }
