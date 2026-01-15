@@ -15,9 +15,13 @@ struct Args {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "server_rs=info,tower_http=info,axum=info".to_string().into()
-        }))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "server_rs=info,tower_http=info,axum=info"
+                    .to_string()
+                    .into()
+            }),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 

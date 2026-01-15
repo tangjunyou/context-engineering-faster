@@ -10,8 +10,7 @@ use axum::{
     http::{header, HeaderValue, Method, Request, StatusCode, Uri},
     response::IntoResponse,
     routing::get,
-    Json,
-    Router,
+    Json, Router,
 };
 use flate2::{write::GzEncoder, Compression};
 use tower::service_fn;
@@ -57,14 +56,16 @@ pub fn build_app(static_dir: PathBuf) -> Router {
                 }
 
                 let _ = req;
-                let mut response =
-                    serve_file_bytes(target.as_ref(), accept_gzip && path_is_gzip_compressible(&request_path))
-                        .await
-                        .unwrap_or_else(|_| {
-                            let mut res = axum::response::Response::new(Body::from("Not Found"));
-                            *res.status_mut() = StatusCode::NOT_FOUND;
-                            res
-                        });
+                let mut response = serve_file_bytes(
+                    target.as_ref(),
+                    accept_gzip && path_is_gzip_compressible(&request_path),
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    let mut res = axum::response::Response::new(Body::from("Not Found"));
+                    *res.status_mut() = StatusCode::NOT_FOUND;
+                    res
+                });
 
                 apply_security_headers(response.headers_mut());
                 apply_cache_headers(response.headers_mut(), &request_path, is_fallback);
@@ -222,11 +223,7 @@ fn apply_security_headers(headers: &mut axum::http::HeaderMap) {
     }
 }
 
-fn apply_cache_headers(
-    headers: &mut axum::http::HeaderMap,
-    request_path: &str,
-    is_fallback: bool,
-) {
+fn apply_cache_headers(headers: &mut axum::http::HeaderMap, request_path: &str, is_fallback: bool) {
     if is_fallback || request_path == "/" || request_path.ends_with("/index.html") {
         headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
         return;

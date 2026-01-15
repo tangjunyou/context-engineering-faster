@@ -18,7 +18,12 @@ async fn serves_existing_static_file() {
     let app = server_rs::build_app(dir.path().to_path_buf());
 
     let response = app
-        .oneshot(Request::builder().uri("/assets/app.js").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/assets/app.js")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -47,4 +52,3 @@ async fn falls_back_to_index_for_unknown_routes() {
         assert_eq!(&bytes[..], b"INDEX");
     }
 }
-

@@ -21,6 +21,12 @@ pub struct ContextEngine {
     variables: HashMap<String, String>,
 }
 
+impl Default for ContextEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[wasm_bindgen]
 impl ContextEngine {
     #[wasm_bindgen(constructor)]

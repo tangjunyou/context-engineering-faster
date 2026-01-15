@@ -4,7 +4,6 @@ WORKDIR /app
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml .prettierignore .prettierrc components.json tsconfig.json vite.config.ts ./
-COPY patches ./patches
 COPY client ./client
 COPY shared ./shared
 
@@ -33,4 +32,3 @@ ENV STATIC_DIR=/app/public
 EXPOSE 3000
 
 CMD ["/app/server-rs"]
-
