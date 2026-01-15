@@ -7,13 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Variable } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
+import { shallow } from "zustand/shallow";
 
 export default function PropertyInspector() {
   const { t } = useTranslation();
-  const selectedNodeId = useStore((state) => state.selectedNodeId);
-  const nodes = useStore((state) => state.nodes);
-  const updateNodeData = useStore((state) => state.updateNodeData);
-  const variables = useStore((state) => state.variables);
+  const { selectedNodeId, nodes, updateNodeData, variables } = useStore(
+    (state) => ({
+      selectedNodeId: state.selectedNodeId,
+      nodes: state.nodes,
+      updateNodeData: state.updateNodeData,
+      variables: state.variables,
+    }),
+    shallow
+  );
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
@@ -27,15 +33,19 @@ export default function PropertyInspector() {
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
-    // Simple regex to find variables like {{var_name}}
     const foundVars = newContent.match(/\{\{([^}]+)\}\}/g)?.map(v => v.slice(2, -2)) || [];
     
-    // Filter to only include variables that actually exist in our store
-    const validVars = foundVars.filter(vName => variables.some(v => v.name === vName));
+    const validVarIds = Array.from(
+      new Set(
+        foundVars
+          .map((vName) => variables.find((v) => v.name === vName)?.id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
 
     updateNodeData(selectedNode.id, { 
       content: newContent,
-      variables: validVars
+      variables: validVarIds
     });
   };
 
@@ -44,12 +54,12 @@ export default function PropertyInspector() {
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      const text = selectedNode.data.content as string;
+      const text = selectedNode.data.content;
       const newText = text.substring(0, start) + `{{${v.name}}}` + text.substring(end);
       
       updateNodeData(selectedNode.id, { 
         content: newText,
-        variables: [...(selectedNode.data.variables as string[] || []), v.name]
+        variables: Array.from(new Set([...(selectedNode.data.variables || []), v.id]))
       });
     }
   };
@@ -66,7 +76,7 @@ export default function PropertyInspector() {
           <div className="grid gap-2">
             <Label>{t('propertyInspector.label')}</Label>
             <Input 
-              value={selectedNode.data.label as string} 
+              value={selectedNode.data.label} 
               onChange={(e) => updateNodeData(selectedNode.id, { label: e.target.value })}
             />
           </div>
@@ -74,14 +84,14 @@ export default function PropertyInspector() {
           <div className="grid gap-2">
             <Label>{t('propertyInspector.type')}</Label>
             <Badge variant="outline" className="w-fit font-mono">
-              {selectedNode.data.type as string}
+              {selectedNode.data.type}
             </Badge>
           </div>
 
           <div className="grid gap-2">
             <Label>{t('propertyInspector.description')}</Label>
             <Input 
-              value={selectedNode.data.description as string || ''} 
+              value={selectedNode.data.description || ''} 
               onChange={(e) => updateNodeData(selectedNode.id, { description: e.target.value })}
               className="text-xs"
             />
@@ -96,7 +106,7 @@ export default function PropertyInspector() {
             </div>
             <Textarea 
               id="node-content-editor"
-              value={selectedNode.data.content as string} 
+              value={selectedNode.data.content} 
               onChange={handleContentChange}
               className="font-mono text-xs min-h-[200px] resize-y"
             />

@@ -1,7 +1,6 @@
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import type { Node } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import type { ContextNodeData } from '@/lib/types';
+import type { ContextFlowNode } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
 import { 
   Bot, 
@@ -33,7 +32,7 @@ const typeColors = {
   user_input: 'border-chart-5 bg-chart-5/10 text-chart-5',
 };
 
-export default function ContextNode({ data, selected }: NodeProps<Node<ContextNodeData>>) {
+export default function ContextNode({ data, selected }: NodeProps<ContextFlowNode>) {
   const { t } = useTranslation();
   const Icon = typeIcons[data.type as keyof typeof typeIcons] || MoreHorizontal;
   const colorClass = typeColors[data.type as keyof typeof typeColors] || 'border-border bg-card';

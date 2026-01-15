@@ -1,9 +1,7 @@
-import { create } from 'zustand';
+import { createWithEqualityFn } from "zustand/traditional";
 import {
   Connection,
-  Edge,
   EdgeChange,
-  Node,
   NodeChange,
   addEdge,
   OnNodesChange,
@@ -13,35 +11,35 @@ import {
   applyEdgeChanges,
 } from '@xyflow/react';
 import { initialNodes, initialEdges, initialVariables } from './initialData';
-import { Variable } from './types';
+import type { ContextFlowEdge, ContextFlowNode, ContextNodeData, Variable } from "./types";
 
 type RFState = {
-  nodes: Node[];
-  edges: Edge[];
+  nodes: ContextFlowNode[];
+  edges: ContextFlowEdge[];
   variables: Variable[];
   selectedNodeId: string | null;
-  onNodesChange: OnNodesChange;
-  onEdgesChange: OnEdgesChange;
+  onNodesChange: OnNodesChange<ContextFlowNode>;
+  onEdgesChange: OnEdgesChange<ContextFlowEdge>;
   onConnect: OnConnect;
-  addNode: (node: Node) => void;
-  updateNodeData: (id: string, data: any) => void;
+  addNode: (node: ContextFlowNode) => void;
+  updateNodeData: (id: string, data: Partial<ContextNodeData>) => void;
   selectNode: (id: string | null) => void;
   updateVariable: (variable: Variable) => void;
   addVariable: (variable: Variable) => void;
   deleteVariable: (id: string) => void;
 };
 
-export const useStore = create<RFState>((set, get) => ({
+export const useStore = createWithEqualityFn<RFState>()((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
   variables: initialVariables,
   selectedNodeId: null,
-  onNodesChange: (changes: NodeChange[]) => {
+  onNodesChange: (changes: NodeChange<ContextFlowNode>[]) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
     });
   },
-  onEdgesChange: (changes: EdgeChange[]) => {
+  onEdgesChange: (changes: EdgeChange<ContextFlowEdge>[]) => {
     set({
       edges: applyEdgeChanges(changes, get().edges),
     });
@@ -51,12 +49,12 @@ export const useStore = create<RFState>((set, get) => ({
       edges: addEdge(connection, get().edges),
     });
   },
-  addNode: (node: Node) => {
+  addNode: (node: ContextFlowNode) => {
     set({
       nodes: [...get().nodes, node],
     });
   },
-  updateNodeData: (id: string, data: any) => {
+  updateNodeData: (id: string, data: Partial<ContextNodeData>) => {
     set({
       nodes: get().nodes.map((node) => {
         if (node.id === id) {

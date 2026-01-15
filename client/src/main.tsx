@@ -1,9 +1,10 @@
 import { createRoot } from "react-dom/client";
 import { Suspense } from "react";
 import { I18nextProvider } from "react-i18next";
-import App from "./App";
+import { RouterProvider } from "@tanstack/react-router";
 import i18n from "./i18n";
 import "./index.css";
+import { router } from "./router";
 
 const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT as string | undefined;
 const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID as string | undefined;
@@ -19,7 +20,7 @@ if (analyticsEndpoint && analyticsWebsiteId) {
 createRoot(document.getElementById("root")!).render(
   <I18nextProvider i18n={i18n}>
     <Suspense fallback={null}>
-      <App />
+      <RouterProvider router={router} />
     </Suspense>
   </I18nextProvider>
 );

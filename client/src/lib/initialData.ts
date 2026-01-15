@@ -1,5 +1,4 @@
-import { Edge, Node } from '@xyflow/react';
-import { Variable } from './types';
+import type { ContextFlowEdge, ContextFlowNode, Variable } from "./types";
 import i18n from '@/i18n';
 
 export const initialVariables: Variable[] = [
@@ -37,7 +36,7 @@ export const initialVariables: Variable[] = [
   }
 ];
 
-export const initialNodes: Node[] = [
+export const initialNodes: ContextFlowNode[] = [
   {
     id: 'node_system',
     type: 'contextNode',
@@ -112,7 +111,7 @@ export const initialNodes: Node[] = [
   },
 ];
 
-export const initialEdges: Edge[] = [
+export const initialEdges: ContextFlowEdge[] = [
   { id: 'e1-2', source: 'node_system', target: 'node_tools', animated: true },
   { id: 'e2-3', source: 'node_tools', target: 'node_memory', animated: true },
   { id: 'e3-4', source: 'node_memory', target: 'node_history', animated: true },

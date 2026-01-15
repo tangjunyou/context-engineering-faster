@@ -6,36 +6,68 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Trash2, Edit2, Save, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from "react";
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { shallow } from "zustand/shallow";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 export default function VariableManager() {
   const { t } = useTranslation();
-  const variables = useStore((state) => state.variables);
-  const addVariable = useStore((state) => state.addVariable);
-  const updateVariable = useStore((state) => state.updateVariable);
-  const deleteVariable = useStore((state) => state.deleteVariable);
+  const { variables, addVariable, updateVariable, deleteVariable } = useStore(
+    (state) => ({
+      variables: state.variables,
+      addVariable: state.addVariable,
+      updateVariable: state.updateVariable,
+      deleteVariable: state.deleteVariable,
+    }),
+    shallow
+  );
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Variable>>({});
+
+  const variableSchema = useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t("variableManager.validation.nameRequired")),
+        type: z.enum(["static", "dynamic"]),
+        value: z.string(),
+      }),
+    [t]
+  );
+
+  type VariableFormValues = z.infer<typeof variableSchema>;
+
+  const form = useForm<VariableFormValues>({
+    resolver: zodResolver(variableSchema),
+    defaultValues: { name: "", type: "static", value: "" },
+    mode: "onChange",
+  });
 
   const handleEdit = (v: Variable) => {
     setEditingId(v.id);
-    setEditForm(v);
+    form.reset({
+      name: v.name,
+      type: v.type,
+      value: v.value ?? "",
+    });
   };
 
-  const handleSave = () => {
-    if (editingId && editForm.name) {
-      updateVariable(editForm as Variable);
-      setEditingId(null);
-      setEditForm({});
-    }
-  };
+  const submit = form.handleSubmit((values) => {
+    if (!editingId) return;
+    const original = variables.find((v) => v.id === editingId);
+    if (!original) return;
+    updateVariable({ ...original, ...values });
+    setEditingId(null);
+    form.reset();
+  });
 
   const handleCancel = () => {
     setEditingId(null);
-    setEditForm({});
+    form.reset();
   };
 
   const handleAdd = () => {
@@ -67,51 +99,81 @@ export default function VariableManager() {
               editingId === v.id ? "ring-2 ring-primary" : "hover:border-primary/50"
             )}>
               {editingId === v.id ? (
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label className="text-xs">{t('variableManager.name')}</Label>
-                    <Input 
-                      value={editForm.name} 
-                      onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                      className="h-8 font-mono text-xs"
+                <Form {...form}>
+                  <form onSubmit={submit} className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{t("variableManager.name")}</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="h-8 font-mono text-xs" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-xs">{t('variableManager.type')}</Label>
-                    <div className="flex gap-2">
-                      <Badge 
-                        variant={editForm.type === 'static' ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => setEditForm({...editForm, type: 'static'})}
+
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{t("variableManager.type")}</FormLabel>
+                          <FormControl>
+                            <div className="flex gap-2">
+                              <Badge
+                                variant={field.value === "static" ? "default" : "outline"}
+                                className="cursor-pointer"
+                                onClick={() => field.onChange("static")}
+                              >
+                                {t("variableManager.static")}
+                              </Badge>
+                              <Badge
+                                variant={field.value === "dynamic" ? "default" : "outline"}
+                                className="cursor-pointer"
+                                onClick={() => field.onChange("dynamic")}
+                              >
+                                {t("variableManager.dynamic")}
+                              </Badge>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="value"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">{t("variableManager.valueExample")}</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="h-8 font-mono text-xs" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end gap-2 mt-2">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={handleCancel}
                       >
-                        {t('variableManager.static')}
-                      </Badge>
-                      <Badge 
-                        variant={editForm.type === 'dynamic' ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => setEditForm({...editForm, type: 'dynamic'})}
-                      >
-                        {t('variableManager.dynamic')}
-                      </Badge>
+                        <X className="w-3 h-3" />
+                      </Button>
+                      <Button type="submit" size="icon" variant="default" className="h-6 w-6">
+                        <Save className="w-3 h-3" />
+                      </Button>
                     </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-xs">{t('variableManager.valueExample')}</Label>
-                    <Input 
-                      value={editForm.value} 
-                      onChange={(e) => setEditForm({...editForm, value: e.target.value})}
-                      className="h-8 font-mono text-xs"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 mt-2">
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancel}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                    <Button size="icon" variant="default" className="h-6 w-6" onClick={handleSave}>
-                      <Save className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
+                  </form>
+                </Form>
               ) : (
                 <div className="flex items-start justify-between group">
                   <div>

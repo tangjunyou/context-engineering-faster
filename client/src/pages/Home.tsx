@@ -1,22 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { 
   ReactFlow, 
   Background, 
   Controls, 
   MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Connection,
-  Edge,
-  NodeChange,
-  EdgeChange,
-  Node,
   BackgroundVariant
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { useStore } from '@/lib/store';
+import type { ContextFlowNode, NodeType } from "@/lib/types";
 import ContextNode from '@/components/ContextNode';
 import VariableManager from '@/components/VariableManager';
 import PropertyInspector from '@/components/PropertyInspector';
@@ -25,6 +18,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { Button } from '@/components/ui/button';
 import { BrainCircuit, Layers, Box, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { shallow } from "zustand/shallow";
 
 const nodeTypes = {
   contextNode: ContextNode,
@@ -32,19 +26,24 @@ const nodeTypes = {
 
 export default function Home() {
   const { t, i18n } = useTranslation();
-  const nodes = useStore((state) => state.nodes);
-  const edges = useStore((state) => state.edges);
-  const onNodesChange = useStore((state) => state.onNodesChange);
-  const onEdgesChange = useStore((state) => state.onEdgesChange);
-  const onConnect = useStore((state) => state.onConnect);
-  const selectNode = useStore((state) => state.selectNode);
-  const addNode = useStore((state) => state.addNode);
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, selectNode, addNode } = useStore(
+    (state) => ({
+      nodes: state.nodes,
+      edges: state.edges,
+      onNodesChange: state.onNodesChange,
+      onEdgesChange: state.onEdgesChange,
+      onConnect: state.onConnect,
+      selectNode: state.selectNode,
+      addNode: state.addNode,
+    }),
+    shallow
+  );
 
   const [activeLeftPanel, setActiveLeftPanel] = useState<'variables' | 'components'>('variables');
   const [activeRightPanel, setActiveRightPanel] = useState<'properties' | 'preview'>('preview');
   const projectName = 'Customer Service Agent';
 
-  const handleNodeClick = (_: React.MouseEvent, node: Node) => {
+  const handleNodeClick = (_: React.MouseEvent, node: ContextFlowNode) => {
     selectNode(node.id);
     setActiveRightPanel('properties');
   };
@@ -53,8 +52,8 @@ export default function Home() {
     selectNode(null);
   };
 
-  const handleAddNode = (type: string, label: string) => {
-    const newNode: Node = {
+  const handleAddNode = (type: NodeType, label: string) => {
+    const newNode: ContextFlowNode = {
       id: `node_${Date.now()}`,
       type: 'contextNode',
       position: { x: Math.random() * 400, y: Math.random() * 400 },
@@ -180,8 +179,7 @@ export default function Home() {
                 <MiniMap 
                   className="bg-card border border-border" 
                   maskColor="var(--background)"
-                  nodeColor={(n) => {
-                    // Simple color mapping for minimap
+                  nodeColor={(n: ContextFlowNode) => {
                     if (n.data.type === 'system_prompt') return 'var(--chart-1)';
                     if (n.data.type === 'tools') return 'var(--chart-2)';
                     return 'var(--muted-foreground)';

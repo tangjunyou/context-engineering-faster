@@ -7,9 +7,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { encode } from 'gpt-tokenizer';
 import { toast } from 'sonner';
 import dagre from 'dagre';
-import { Edge, Node } from '@xyflow/react';
 import init, { ContextEngine } from '@/lib/wasm/context_engine';
 import { useTranslation } from 'react-i18next';
+import type { ContextFlowNode } from "@/lib/types";
+import { shallow } from "zustand/shallow";
 
 export default function PreviewPanel() {
   const { t } = useTranslation();
@@ -18,9 +19,14 @@ export default function PreviewPanel() {
   useEffect(() => {
     init().then(() => setWasmReady(true));
   }, []);
-  const nodes = useStore((state) => state.nodes);
-  const edges = useStore((state) => state.edges);
-  const variables = useStore((state) => state.variables);
+  const { nodes, edges, variables } = useStore(
+    (state) => ({
+      nodes: state.nodes,
+      edges: state.edges,
+      variables: state.variables,
+    }),
+    shallow
+  );
 
   const [previewText, setPreviewText] = useState('');
   const [tokenCount, setTokenCount] = useState(0);
@@ -39,8 +45,8 @@ export default function PreviewPanel() {
       const sortedIds = dagre.graphlib.alg.topsort(g) as string[];
       // Filter out nodes that might not be in the graph anymore or are not context nodes
       return sortedIds
-        .map((id: string) => nodes.find((n: Node) => n.id === id))
-        .filter((n): n is Node => Boolean(n));
+        .map((id: string) => nodes.find((n: ContextFlowNode) => n.id === id))
+        .filter((n): n is ContextFlowNode => Boolean(n));
     } catch (e) {
       // Fallback if cycle detected or other error
       console.warn("Cycle detected or graph error", e);
@@ -69,8 +75,8 @@ export default function PreviewPanel() {
       // Prepare nodes for Rust
       const rustNodes = sortedNodes.map(node => ({
         id: node.id,
-        label: node.data.label as string,
-        content: node.data.content as string || ''
+        label: node.data.label,
+        content: node.data.content || ''
       }));
 
       const fullText = engine.process_context(rustNodes);

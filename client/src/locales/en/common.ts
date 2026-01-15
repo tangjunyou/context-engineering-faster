@@ -64,6 +64,9 @@ const common = {
     noValue: "(No value)",
     source: "Source",
     userDefined: "User Defined",
+    validation: {
+      nameRequired: "Name is required",
+    },
   },
   propertyInspector: {
     empty: "Select a node to edit its properties",
@@ -137,4 +140,3 @@ const common = {
 } as const;
 
 export default common;
-

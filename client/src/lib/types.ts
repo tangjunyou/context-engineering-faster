@@ -1,3 +1,5 @@
+import type { Edge, Node } from "@xyflow/react";
+
 export type NodeType = 'system_prompt' | 'tools' | 'memory' | 'retrieval' | 'messages' | 'metadata' | 'user_input';
 
 export type VariableType = 'static' | 'dynamic';
@@ -20,8 +22,11 @@ export interface ContextNodeData extends Record<string, unknown> {
   isLocked?: boolean; // If true, cannot be deleted (e.g. System Prompt might be mandatory in some templates)
 }
 
+export type ContextFlowNode = Node<ContextNodeData>;
+export type ContextFlowEdge = Edge;
+
 export interface ProjectState {
-  nodes: any[]; // ReactFlow nodes
-  edges: any[]; // ReactFlow edges
+  nodes: ContextFlowNode[];
+  edges: ContextFlowEdge[];
   variables: Variable[];
 }

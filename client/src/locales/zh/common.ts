@@ -64,6 +64,9 @@ const common = {
     noValue: "（无值）",
     source: "来源",
     userDefined: "用户自定义",
+    validation: {
+      nameRequired: "变量名称不能为空",
+    },
   },
   propertyInspector: {
     empty: "请选择一个节点来编辑属性",
@@ -136,4 +139,3 @@ const common = {
 } as const;
 
 export default common;
-

@@ -1,20 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Link } from "@tanstack/react-router";
 import { AlertCircle, Home } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "wouter";
 
 export default function NotFound() {
-  const [, setLocation] = useLocation();
   const { t } = useTranslation();
 
-  const handleGoHome = () => {
-    setLocation("/");
-  };
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background to-muted/30">
+      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-card/80 backdrop-blur-sm">
         <CardContent className="pt-8 pb-8 text-center">
           <div className="flex justify-center mb-6">
             <div className="relative">
@@ -23,13 +18,13 @@ export default function NotFound() {
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">404</h1>
 
-          <h2 className="text-xl font-semibold text-slate-700 mb-4">
+          <h2 className="text-xl font-semibold text-foreground/80 mb-4">
             {t("notFound.title")}
           </h2>
 
-          <p className="text-slate-600 mb-8 leading-relaxed">
+          <p className="text-muted-foreground mb-8 leading-relaxed">
             {t("notFound.desc1")}
             <br />
             {t("notFound.desc2")}
@@ -37,11 +32,13 @@ export default function NotFound() {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
-              onClick={handleGoHome}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+              className="px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg"
+              asChild
             >
-              <Home className="w-4 h-4 mr-2" />
-              {t("notFound.goHome")}
+              <Link to="/">
+                <Home className="w-4 h-4 mr-2" />
+                {t("notFound.goHome")}
+              </Link>
             </Button>
           </div>
         </CardContent>
