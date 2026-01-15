@@ -121,7 +121,8 @@ const common = {
       historyDesc: "Recent conversation history",
       metadataDesc: "Dynamic environment information",
       inputDesc: "The user's latest input",
-      memoryContent: "User Profile:\nName: {{user_name}}\nPreferences: VIP User",
+      memoryContent:
+        "User Profile:\nName: {{user_name}}\nPreferences: VIP User",
       metadataContent: "Current Time: {{current_time}}\nOS: Linux",
       historyContent:
         "[User]: I finished the book you recommended.\n[Assistant]: Glad to hear that! How was it?",

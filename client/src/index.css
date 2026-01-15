@@ -50,7 +50,7 @@
   --sidebar-primary-foreground: oklch(0.98 0 0);
   --chart-1: oklch(0.6 0.18 250);
   --chart-2: oklch(0.7 0.15 150); /* Green */
-  --chart-3: oklch(0.7 0.15 60);  /* Amber */
+  --chart-3: oklch(0.7 0.15 60); /* Amber */
   --chart-4: oklch(0.5 0.15 300); /* Purple */
   --chart-5: oklch(0.4 0.1 260);
   --radius: 0.25rem; /* Sharper corners for technical feel */
@@ -82,45 +82,45 @@
 .dark {
   /* Neural Architect Theme - Dark Mode (Primary) */
   /* Background: Deep technical dark grey/black #0F1115 */
-  --background: oklch(0.15 0.01 260); 
+  --background: oklch(0.15 0.01 260);
   --foreground: oklch(0.9 0.01 260);
-  
+
   /* Primary: Neon Cyan #00F0FF */
-  --primary: oklch(0.75 0.18 220); 
+  --primary: oklch(0.75 0.18 220);
   --primary-foreground: oklch(0.1 0.02 260);
-  
+
   /* Card: Slightly lighter dark */
   --card: oklch(0.18 0.015 260);
   --card-foreground: oklch(0.9 0.01 260);
-  
+
   --popover: oklch(0.18 0.015 260);
   --popover-foreground: oklch(0.9 0.01 260);
-  
+
   /* Secondary: Muted technical blue-grey */
   --secondary: oklch(0.25 0.02 260);
   --secondary-foreground: oklch(0.9 0.01 260);
-  
+
   --muted: oklch(0.25 0.02 260);
   --muted-foreground: oklch(0.6 0.02 260);
-  
+
   --accent: oklch(0.25 0.02 260);
   --accent-foreground: oklch(0.95 0.01 260);
-  
+
   --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
-  
+
   /* Border: Subtle technical lines */
   --border: oklch(0.3 0.02 260);
   --input: oklch(0.25 0.02 260);
   --ring: oklch(0.75 0.18 220);
-  
+
   /* Chart Colors for Nodes */
   --chart-1: oklch(0.75 0.18 220); /* Cyan - System */
-  --chart-2: oklch(0.7 0.15 150);  /* Green - Tools */
-  --chart-3: oklch(0.75 0.15 60);  /* Amber - Memory */
+  --chart-2: oklch(0.7 0.15 150); /* Green - Tools */
+  --chart-3: oklch(0.75 0.15 60); /* Amber - Memory */
   --chart-4: oklch(0.65 0.18 300); /* Purple - Retrieval */
-  --chart-5: oklch(0.6 0.15 260);  /* Blue - User */
-  
+  --chart-5: oklch(0.6 0.15 260); /* Blue - User */
+
   --sidebar: oklch(0.12 0.01 260);
   --sidebar-foreground: oklch(0.9 0.01 260);
   --sidebar-accent: oklch(0.2 0.02 260);

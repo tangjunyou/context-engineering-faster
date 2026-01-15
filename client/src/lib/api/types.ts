@@ -24,4 +24,3 @@ export class ApiError extends Error {
     this.bodyText = options.bodyText;
   }
 }
-

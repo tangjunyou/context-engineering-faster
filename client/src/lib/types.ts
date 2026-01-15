@@ -1,8 +1,15 @@
 import type { Edge, Node } from "@xyflow/react";
 
-export type NodeType = 'system_prompt' | 'tools' | 'memory' | 'retrieval' | 'messages' | 'metadata' | 'user_input';
+export type NodeType =
+  | "system_prompt"
+  | "tools"
+  | "memory"
+  | "retrieval"
+  | "messages"
+  | "metadata"
+  | "user_input";
 
-export type VariableType = 'static' | 'dynamic';
+export type VariableType = "static" | "dynamic";
 
 export interface Variable {
   id: string;

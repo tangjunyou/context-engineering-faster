@@ -9,9 +9,14 @@ import {
   OnConnect,
   applyNodeChanges,
   applyEdgeChanges,
-} from '@xyflow/react';
-import { initialNodes, initialEdges, initialVariables } from './initialData';
-import type { ContextFlowEdge, ContextFlowNode, ContextNodeData, Variable } from "./types";
+} from "@xyflow/react";
+import { initialNodes, initialEdges, initialVariables } from "./initialData";
+import type {
+  ContextFlowEdge,
+  ContextFlowNode,
+  ContextNodeData,
+  Variable,
+} from "./types";
 
 type RFState = {
   nodes: ContextFlowNode[];
@@ -56,7 +61,7 @@ export const useStore = createWithEqualityFn<RFState>()((set, get) => ({
   },
   updateNodeData: (id: string, data: Partial<ContextNodeData>) => {
     set({
-      nodes: get().nodes.map((node) => {
+      nodes: get().nodes.map(node => {
         if (node.id === id) {
           return { ...node, data: { ...node.data, ...data } };
         }
@@ -69,7 +74,7 @@ export const useStore = createWithEqualityFn<RFState>()((set, get) => ({
   },
   updateVariable: (updatedVariable: Variable) => {
     set({
-      variables: get().variables.map((v) =>
+      variables: get().variables.map(v =>
         v.id === updatedVariable.id ? updatedVariable : v
       ),
     });
@@ -81,7 +86,7 @@ export const useStore = createWithEqualityFn<RFState>()((set, get) => ({
   },
   deleteVariable: (id: string) => {
     set({
-      variables: get().variables.filter((v) => v.id !== id),
+      variables: get().variables.filter(v => v.id !== id),
     });
   },
 }));
