@@ -16,6 +16,9 @@ RUN pnpm -s exec vite build
 FROM rust:1.83-bookworm AS backend-builder
 WORKDIR /app
 
+COPY context-engine/Cargo.toml ./context-engine/Cargo.toml
+COPY context-engine/src ./context-engine/src
+
 COPY server-rs/Cargo.toml server-rs/Cargo.lock ./server-rs/
 COPY server-rs/src ./server-rs/src
 
