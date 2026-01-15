@@ -83,6 +83,7 @@ const common = {
     refresh: "刷新",
     run: "运行",
     running: "正在运行仿真…",
+    completed: "仿真完成",
     tokens: "Token 总数",
     estCost: "预估费用（GPT-4o）",
     copied: "已复制到剪贴板",

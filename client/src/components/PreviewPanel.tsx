@@ -15,6 +15,7 @@ import { shallow } from "zustand/shallow";
 export default function PreviewPanel() {
   const { t } = useTranslation();
   const [wasmReady, setWasmReady] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     init().then(() => setWasmReady(true));
@@ -56,7 +57,7 @@ export default function PreviewPanel() {
 
   useEffect(() => {
     generatePreview();
-  }, [sortedNodes, variables, nodes]); // Re-run when structure or data changes
+  }, [sortedNodes, variables, nodes, wasmReady]); // Re-run when structure or data changes
 
   const generatePreview = () => {
     if (!wasmReady) return;
@@ -109,7 +110,20 @@ export default function PreviewPanel() {
           <Button size="sm" variant="outline" onClick={generatePreview}>
             <RefreshCw className="w-3 h-3 mr-1" /> {t("preview.refresh")}
           </Button>
-          <Button size="sm" onClick={() => toast.info(t("preview.running"))}>
+          <Button
+            size="sm"
+            onClick={() => {
+              if (isRunning) return;
+              setIsRunning(true);
+              toast.info(t("preview.running"));
+              try {
+                generatePreview();
+                toast.success(t("preview.completed"));
+              } finally {
+                setIsRunning(false);
+              }
+            }}
+          >
             <Play className="w-3 h-3 mr-1" /> {t("preview.run")}
           </Button>
         </div>

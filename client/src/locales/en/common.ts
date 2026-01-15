@@ -83,6 +83,7 @@ const common = {
     refresh: "Refresh",
     run: "Run",
     running: "Simulation running...",
+    completed: "Simulation complete",
     tokens: "Total Tokens",
     estCost: "Est. Cost (GPT-4o)",
     copied: "Context copied to clipboard",
