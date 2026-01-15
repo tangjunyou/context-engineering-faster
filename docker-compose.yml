@@ -1,0 +1,10 @@
+services:
+  app:
+    build:
+      context: .
+    environment:
+      PORT: "3000"
+      STATIC_DIR: "/app/public"
+      RUST_LOG: "server_rs=info,tower_http=info,axum=info"
+    ports:
+      - "3000:3000"

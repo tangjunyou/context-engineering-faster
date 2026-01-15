@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -s check
+
+      - name: Build
+        run: pnpm -s build
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        run: cargo fmt --manifest-path server-rs/Cargo.toml --all -- --check
+
+      - name: Clippy (server-rs)
+        run: cargo clippy --manifest-path server-rs/Cargo.toml -- -D warnings
+
+      - name: Test (server-rs)
+        run: cargo test --manifest-path server-rs/Cargo.toml
+
+      - name: Clippy (context-engine)
+        run: cargo clippy --manifest-path context-engine/Cargo.toml -- -D warnings
+
+      - name: Test (context-engine)
+        run: cargo test --manifest-path context-engine/Cargo.toml
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t context-engineering-visualizer:ci .
+

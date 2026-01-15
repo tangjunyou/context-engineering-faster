@@ -1,0 +1,15 @@
+{
+  "name": "context-engine",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "context_engine_bg.wasm",
+    "context_engine.js",
+    "context_engine.d.ts"
+  ],
+  "main": "context_engine.js",
+  "types": "context_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

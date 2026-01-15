@@ -1,0 +1,239 @@
+import { useState, useCallback } from 'react';
+import { 
+  ReactFlow, 
+  Background, 
+  Controls, 
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  NodeChange,
+  EdgeChange,
+  Node,
+  BackgroundVariant
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+
+import { useStore } from '@/lib/store';
+import ContextNode from '@/components/ContextNode';
+import VariableManager from '@/components/VariableManager';
+import PropertyInspector from '@/components/PropertyInspector';
+import PreviewPanel from '@/components/PreviewPanel';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Button } from '@/components/ui/button';
+import { BrainCircuit, Layers, Box, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+const nodeTypes = {
+  contextNode: ContextNode,
+};
+
+export default function Home() {
+  const { t, i18n } = useTranslation();
+  const nodes = useStore((state) => state.nodes);
+  const edges = useStore((state) => state.edges);
+  const onNodesChange = useStore((state) => state.onNodesChange);
+  const onEdgesChange = useStore((state) => state.onEdgesChange);
+  const onConnect = useStore((state) => state.onConnect);
+  const selectNode = useStore((state) => state.selectNode);
+  const addNode = useStore((state) => state.addNode);
+
+  const [activeLeftPanel, setActiveLeftPanel] = useState<'variables' | 'components'>('variables');
+  const [activeRightPanel, setActiveRightPanel] = useState<'properties' | 'preview'>('preview');
+  const projectName = 'Customer Service Agent';
+
+  const handleNodeClick = (_: React.MouseEvent, node: Node) => {
+    selectNode(node.id);
+    setActiveRightPanel('properties');
+  };
+
+  const handlePaneClick = () => {
+    selectNode(null);
+  };
+
+  const handleAddNode = (type: string, label: string) => {
+    const newNode: Node = {
+      id: `node_${Date.now()}`,
+      type: 'contextNode',
+      position: { x: Math.random() * 400, y: Math.random() * 400 },
+      data: { 
+        label, 
+        type,
+        content: '',
+        variables: []
+      },
+    };
+    addNode(newNode);
+  };
+
+  return (
+    <div className="h-screen w-screen bg-background text-foreground overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="h-14 border-b border-border bg-card flex items-center px-4 justify-between z-10">
+        <div className="flex items-center gap-2">
+          <div className="bg-primary/20 p-1.5 rounded text-primary">
+            <BrainCircuit size={20} />
+          </div>
+          <h1 className="font-bold text-lg tracking-tight">
+            {t('app.name')}
+          </h1>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>{t('app.version')}</span>
+          <div className="h-4 w-[1px] bg-border"></div>
+          <span>{t('app.projectLabel', { name: projectName })}</span>
+          <div className="h-4 w-[1px] bg-border"></div>
+          <div className="flex items-center gap-2">
+            <span>{t('nav.language')}:</span>
+            <Button
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => i18n.changeLanguage('en')}
+              disabled={i18n.resolvedLanguage === 'en'}
+            >
+              {t('nav.languageEN')}
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => i18n.changeLanguage('zh')}
+              disabled={i18n.resolvedLanguage === 'zh'}
+            >
+              {t('nav.languageZH')}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Workspace */}
+      <div className="flex-1 overflow-hidden">
+        <ResizablePanelGroup direction="horizontal">
+          
+          {/* Left Sidebar */}
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="bg-card border-r border-border flex flex-col">
+            <div className="flex border-b border-border">
+              <Button 
+                variant="ghost" 
+                className={`flex-1 rounded-none h-10 text-xs uppercase tracking-wider ${activeLeftPanel === 'variables' ? 'bg-muted text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+                onClick={() => setActiveLeftPanel('variables')}
+              >
+                <Box className="w-3 h-3 mr-2" /> {t('nav.variables')}
+              </Button>
+              <Button 
+                variant="ghost" 
+                className={`flex-1 rounded-none h-10 text-xs uppercase tracking-wider ${activeLeftPanel === 'components' ? 'bg-muted text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+                onClick={() => setActiveLeftPanel('components')}
+              >
+                <Layers className="w-3 h-3 mr-2" /> {t('nav.components')}
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-hidden">
+              {activeLeftPanel === 'variables' ? (
+                <VariableManager />
+              ) : (
+                <div className="p-4 grid gap-2">
+                  <div className="text-xs font-bold text-muted-foreground mb-2 uppercase">
+                    {t('componentsPanel.hint')}
+                  </div>
+                  <Button variant="outline" className="justify-start" onClick={() => handleAddNode('system_prompt', t('componentsPanel.systemPrompt'))}>
+                    <div className="w-2 h-2 rounded-full bg-chart-1 mr-2" /> {t('componentsPanel.systemPrompt')}
+                  </Button>
+                  <Button variant="outline" className="justify-start" onClick={() => handleAddNode('tools', t('componentsPanel.toolDefinitions'))}>
+                    <div className="w-2 h-2 rounded-full bg-chart-2 mr-2" /> {t('componentsPanel.toolDefinitions')}
+                  </Button>
+                  <Button variant="outline" className="justify-start" onClick={() => handleAddNode('memory', t('componentsPanel.memoryBlock'))}>
+                    <div className="w-2 h-2 rounded-full bg-chart-3 mr-2" /> {t('componentsPanel.memoryBlock')}
+                  </Button>
+                  <Button variant="outline" className="justify-start" onClick={() => handleAddNode('retrieval', t('componentsPanel.retrievedContext'))}>
+                    <div className="w-2 h-2 rounded-full bg-chart-4 mr-2" /> {t('componentsPanel.retrievedContext')}
+                  </Button>
+                  <Button variant="outline" className="justify-start" onClick={() => handleAddNode('messages', t('componentsPanel.messageHistory'))}>
+                    <div className="w-2 h-2 rounded-full bg-chart-5 mr-2" /> {t('componentsPanel.messageHistory')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle />
+
+          {/* Center Canvas */}
+          <ResizablePanel defaultSize={55}>
+            <div className="h-full w-full bg-background relative">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={handleNodeClick}
+                onPaneClick={handlePaneClick}
+                nodeTypes={nodeTypes}
+                fitView
+                className="bg-background"
+              >
+                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--border)" />
+                <Controls className="bg-card border border-border text-foreground fill-foreground" />
+                <MiniMap 
+                  className="bg-card border border-border" 
+                  maskColor="var(--background)"
+                  nodeColor={(n) => {
+                    // Simple color mapping for minimap
+                    if (n.data.type === 'system_prompt') return 'var(--chart-1)';
+                    if (n.data.type === 'tools') return 'var(--chart-2)';
+                    return 'var(--muted-foreground)';
+                  }}
+                />
+              </ReactFlow>
+              
+              {/* Floating Toolbar (Optional) */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-card/80 backdrop-blur border border-border rounded-full px-4 py-2 shadow-xl flex gap-4 text-xs font-mono z-10">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span>{t('toolbar.ready')}</span>
+                </div>
+                <div className="w-[1px] h-4 bg-border" />
+                <div>{t('toolbar.nodes', { count: nodes.length })}</div>
+                <div>{t('toolbar.connections', { count: edges.length })}</div>
+              </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle />
+
+          {/* Right Sidebar */}
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="bg-card border-l border-border flex flex-col">
+             <div className="flex border-b border-border">
+              <Button 
+                variant="ghost" 
+                className={`flex-1 rounded-none h-10 text-xs uppercase tracking-wider ${activeRightPanel === 'preview' ? 'bg-muted text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+                onClick={() => setActiveRightPanel('preview')}
+              >
+                <BrainCircuit className="w-3 h-3 mr-2" /> {t('nav.simulation')}
+              </Button>
+              <Button 
+                variant="ghost" 
+                className={`flex-1 rounded-none h-10 text-xs uppercase tracking-wider ${activeRightPanel === 'properties' ? 'bg-muted text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+                onClick={() => setActiveRightPanel('properties')}
+              >
+                <Settings className="w-3 h-3 mr-2" /> {t('nav.properties')}
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-hidden">
+              {activeRightPanel === 'preview' ? (
+                <PreviewPanel />
+              ) : (
+                <PropertyInspector />
+              )}
+            </div>
+          </ResizablePanel>
+
+        </ResizablePanelGroup>
+      </div>
+    </div>
+  );
+}
