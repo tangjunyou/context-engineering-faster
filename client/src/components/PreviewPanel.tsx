@@ -331,7 +331,9 @@ export default function PreviewPanel() {
                           }
                           onClick={() => setTraceView(run)}
                         >
-                          {new Date(Number(run.createdAt) || Date.now()).toLocaleString()}
+                          {new Date(
+                            Number(run.createdAt) || Date.now()
+                          ).toLocaleString()}
                         </Button>
                       ))}
                     </div>

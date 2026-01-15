@@ -163,8 +163,20 @@ describe("PreviewPanel", () => {
     expect(executePreviewTrace).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: [
-          { id: "v1", name: "chat", type: "dynamic", value: "5", resolver: "chat://s1" },
-          { id: "v2", name: "sql", type: "dynamic", value: "SELECT 1", resolver: "sql://ds1" },
+          {
+            id: "v1",
+            name: "chat",
+            type: "dynamic",
+            value: "5",
+            resolver: "chat://s1",
+          },
+          {
+            id: "v2",
+            name: "sql",
+            type: "dynamic",
+            value: "SELECT 1",
+            resolver: "sql://ds1",
+          },
         ],
       })
     );

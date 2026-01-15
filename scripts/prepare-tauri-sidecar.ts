@@ -34,4 +34,3 @@ if (process.platform !== "win32") {
 }
 
 console.log(`Sidecar ready: ${dest}`);
-
