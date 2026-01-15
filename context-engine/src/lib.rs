@@ -124,13 +124,7 @@ impl ContextEngine {
             })
             .collect::<Vec<_>>();
 
-        let trace = render_with_trace(
-            &nodes,
-            &self.variables,
-            OutputStyle::Labeled,
-            "wasm",
-            "",
-        );
+        let trace = render_with_trace(&nodes, &self.variables, OutputStyle::Labeled, "wasm", "");
         Ok(trace.text)
     }
 }
@@ -284,9 +278,7 @@ mod tests {
         let trace = render_with_trace(&nodes, &vars, OutputStyle::Labeled, "t1", "now");
         assert_eq!(trace.segments.len(), 1);
         assert_eq!(trace.segments[0].missing_variables, vec!["missing"]);
-        assert!(trace.segments[0]
-            .rendered
-            .contains("Hello {{missing}}"));
+        assert!(trace.segments[0].rendered.contains("Hello {{missing}}"));
         assert!(!trace.segments[0].messages.is_empty());
     }
 

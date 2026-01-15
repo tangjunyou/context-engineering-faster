@@ -79,4 +79,3 @@ async fn renders_session_messages_as_context() {
     assert!(value.contains("[User]: hi"));
     assert!(value.contains("[Assistant]: hello"));
 }
-

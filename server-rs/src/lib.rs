@@ -25,8 +25,8 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-mod crypto;
 pub mod connectors;
+mod crypto;
 
 #[derive(Clone)]
 struct AppState {
@@ -61,7 +61,6 @@ fn build_app_with_state(
     cors: CorsLayer,
     state: AppState,
 ) -> Router {
-
     let spa_static = service_fn({
         let static_dir = Arc::clone(&static_dir);
         let index_file = Arc::clone(&index_file);
@@ -115,7 +114,10 @@ fn build_app_with_state(
         .route("/healthz", get(healthz))
         .route("/projects", get(list_projects).post(create_project))
         .route("/projects/{id}", get(get_project).put(upsert_project))
-        .route("/datasources", get(list_datasources).post(create_datasource))
+        .route(
+            "/datasources",
+            get(list_datasources).post(create_datasource),
+        )
         .route("/datasources/{id}", get(get_datasource))
         .route("/datasources/{id}/test", post(test_datasource))
         .route("/datasources/{id}/tables", get(list_datasource_tables))
@@ -361,7 +363,9 @@ async fn create_datasource(
         Err(err) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({ "error": "missing_data_key", "message": err.to_string() })),
+                Json(
+                    serde_json::json!({ "error": "missing_data_key", "message": err.to_string() }),
+                ),
             )
                 .into_response();
         }
@@ -622,7 +626,10 @@ async fn list_projects(State(state): State<AppState>) -> axum::response::Respons
     (StatusCode::OK, Json(out)).into_response()
 }
 
-async fn get_project(State(state): State<AppState>, Path(id): Path<String>) -> axum::response::Response {
+async fn get_project(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> axum::response::Response {
     let path = state.data_dir.join("projects").join(format!("{id}.json"));
     let text = match tokio::fs::read_to_string(&path).await {
         Ok(t) => t,

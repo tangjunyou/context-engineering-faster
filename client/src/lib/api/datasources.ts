@@ -29,4 +29,3 @@ export async function testDataSource(id: string): Promise<{ ok: boolean }> {
     method: "POST",
   });
 }
-

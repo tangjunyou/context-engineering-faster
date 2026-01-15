@@ -25,4 +25,3 @@ export async function executeTrace(input: {
     body: JSON.stringify(input),
   });
 }
-

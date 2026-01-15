@@ -20,4 +20,3 @@ export type Project = {
   variables: ProjectVariable[];
   updatedAt: string;
 };
-

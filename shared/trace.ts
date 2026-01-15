@@ -35,4 +35,3 @@ export type TraceRun = {
   segments: TraceSegment[];
   messages: TraceMessage[];
 };
-

@@ -13,7 +13,10 @@ impl MilvusRestClient {
 
     pub async fn list_collections(&self) -> anyhow::Result<serde_json::Value> {
         let client = reqwest::Client::new();
-        let url = format!("{}/v2/vectordb/collections/list", self.base_url.trim_end_matches('/'));
+        let url = format!(
+            "{}/v2/vectordb/collections/list",
+            self.base_url.trim_end_matches('/')
+        );
         let mut req = client.post(url).json(&serde_json::json!({}));
         if let Some(token) = &self.token {
             req = req.bearer_auth(token);
@@ -42,4 +45,3 @@ impl MilvusRestClient {
         Err(anyhow::anyhow!("milvus feature 未启用"))
     }
 }
-

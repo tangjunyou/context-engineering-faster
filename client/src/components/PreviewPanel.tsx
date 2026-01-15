@@ -133,7 +133,9 @@ export default function PreviewPanel() {
           try {
             const res = await renderSession({
               sessionId,
-              maxMessages: Number.isFinite(maxMessages) ? maxMessages : undefined,
+              maxMessages: Number.isFinite(maxMessages)
+                ? maxMessages
+                : undefined,
             });
             return { id: v.id, name: v.name, value: res.value };
           } catch (e) {
@@ -357,7 +359,9 @@ export default function PreviewPanel() {
               <Alert variant="destructive" className="mb-4">
                 <AlertTriangle />
                 <AlertTitle>{t("preview.cycleTitle")}</AlertTitle>
-                <AlertDescription>{t("preview.cycleDetected")}</AlertDescription>
+                <AlertDescription>
+                  {t("preview.cycleDetected")}
+                </AlertDescription>
               </Alert>
             )}
             <pre className="font-mono text-xs whitespace-pre-wrap text-foreground/80 leading-relaxed">

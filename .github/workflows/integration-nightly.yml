@@ -41,4 +41,3 @@ jobs:
           TEST_POSTGRES_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
           TEST_MYSQL_URL: mysql://root:mysql@127.0.0.1:3306/test
         run: cargo test --manifest-path server-rs/Cargo.toml --test sql_any_integration
-

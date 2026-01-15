@@ -12,4 +12,3 @@ pub async fn test_connection(uri: &str, user: &str, pass: &str) -> anyhow::Resul
 pub async fn test_connection(_uri: &str, _user: &str, _pass: &str) -> anyhow::Result<()> {
     Err(anyhow::anyhow!("neo4j feature 未启用"))
 }
-
