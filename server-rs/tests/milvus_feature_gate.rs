@@ -87,4 +87,3 @@ async fn milvus_datasource_is_feature_gated_but_api_contract_is_stable() {
     assert_eq!(json["text"], "Milvus: [v]");
     assert_eq!(json["messages"][0]["code"], "variable_resolve_failed");
 }
-

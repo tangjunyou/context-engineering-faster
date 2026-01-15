@@ -50,8 +50,17 @@ async fn execute_returns_stable_trace_segments() {
 
     assert_eq!(json["segments"][0]["label"], "System");
     assert_eq!(json["segments"][0]["template"], "Hello {{name}}");
-    assert_eq!(json["segments"][0]["rendered"], "--- System ---\nHello Alice");
-    assert_eq!(json["segments"][0]["missingVariables"].as_array().unwrap().len(), 0);
+    assert_eq!(
+        json["segments"][0]["rendered"],
+        "--- System ---\nHello Alice"
+    );
+    assert_eq!(
+        json["segments"][0]["missingVariables"]
+            .as_array()
+            .unwrap()
+            .len(),
+        0
+    );
 
     assert_eq!(json["segments"][1]["label"], "User");
     assert_eq!(json["segments"][1]["rendered"], "--- User ---\nI am Alice.");
@@ -65,5 +74,8 @@ async fn execute_returns_stable_trace_segments() {
         json["segments"][2]["missingVariables"].as_array().unwrap(),
         &vec![serde_json::Value::String("missing".to_string())]
     );
-    assert_eq!(json["segments"][2]["messages"][0]["code"], "missing_variable");
+    assert_eq!(
+        json["segments"][2]["messages"][0]["code"],
+        "missing_variable"
+    );
 }

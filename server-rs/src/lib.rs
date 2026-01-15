@@ -116,10 +116,15 @@ fn build_app_with_state(
         .route("/healthz", get(healthz))
         .route("/projects", get(list_projects).post(create_project))
         .route("/projects/{id}", get(get_project).put(upsert_project))
-        .route("/datasources", get(list_datasources).post(create_datasource))
+        .route(
+            "/datasources",
+            get(list_datasources).post(create_datasource),
+        )
         .route(
             "/datasources/{id}",
-            get(get_datasource).put(update_datasource).delete(delete_datasource),
+            get(get_datasource)
+                .put(update_datasource)
+                .delete(delete_datasource),
         )
         .route("/datasources/{id}/test", post(test_datasource))
         .route("/datasources/{id}/tables", get(list_datasource_tables))
@@ -659,7 +664,10 @@ async fn delete_datasource(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> axum::response::Response {
-    let path = state.data_dir.join("datasources").join(format!("{id}.json"));
+    let path = state
+        .data_dir
+        .join("datasources")
+        .join(format!("{id}.json"));
     match tokio::fs::remove_file(&path).await {
         Ok(_) => (StatusCode::NO_CONTENT, Body::empty()).into_response(),
         Err(_) => (
@@ -1263,13 +1271,7 @@ async fn render_session(
     let max = req.max_messages.unwrap_or(20) as usize;
     let out = render_session_as_text(&s, max);
 
-    (
-        StatusCode::OK,
-        Json(RenderSessionResponse {
-            value: out,
-        }),
-    )
-        .into_response()
+    (StatusCode::OK, Json(RenderSessionResponse { value: out })).into_response()
 }
 
 fn render_session_as_text(s: &Session, max_messages: usize) -> String {
@@ -1369,8 +1371,7 @@ async fn execute_preview(
         .collect::<Vec<_>>();
 
     let now = now_ms().to_string();
-    let mut trace =
-        render_with_trace(&nodes, &vars, req.output_style, &format!("run_{now}"), &now);
+    let mut trace = render_with_trace(&nodes, &vars, req.output_style, &format!("run_{now}"), &now);
     trace.messages.extend(messages);
     (StatusCode::OK, Json(trace)).into_response()
 }
@@ -1450,7 +1451,10 @@ async fn resolve_neo4j_value(
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("missing_cypher"))?
             .to_string();
-        let params = json.get("params").cloned().unwrap_or(serde_json::Value::Null);
+        let params = json
+            .get("params")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         (cypher, params)
     } else {
         (cypher.to_string(), serde_json::Value::Null)
@@ -1810,7 +1814,11 @@ async fn list_table_columns_for_url(url: &str, table: &str) -> anyhow::Result<Ve
             ORDER BY ordinal_position
             "#,
         )
-        .bind(if schema == "public" { None::<String> } else { Some(schema) })
+        .bind(if schema == "public" {
+            None::<String>
+        } else {
+            Some(schema)
+        })
         .bind(table)
         .fetch_all(&mut conn)
         .await?;

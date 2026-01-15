@@ -186,4 +186,3 @@ fn sqlite_url(path: &std::path::Path) -> String {
     let p = p.strip_prefix('/').unwrap_or(p.as_str());
     format!("sqlite:///{p}")
 }
-

@@ -11,9 +11,17 @@ impl MilvusRestClient {
         Self { base_url, token }
     }
 
-    async fn post_json(&self, path: &str, body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    async fn post_json(
+        &self,
+        path: &str,
+        body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
         let client = reqwest::Client::new();
-        let url = format!("{}/{}", self.base_url.trim_end_matches('/'), path.trim_start_matches('/'));
+        let url = format!(
+            "{}/{}",
+            self.base_url.trim_end_matches('/'),
+            path.trim_start_matches('/')
+        );
         let mut req = client.post(url).json(&body);
         if let Some(token) = &self.token {
             req = req.bearer_auth(token);
@@ -32,15 +40,24 @@ impl MilvusRestClient {
             .await
     }
 
-    pub async fn insert_entities(&self, body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    pub async fn insert_entities(
+        &self,
+        body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
         self.post_json("/v2/vectordb/entities/insert", body).await
     }
 
-    pub async fn search_entities(&self, body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    pub async fn search_entities(
+        &self,
+        body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
         self.post_json("/v2/vectordb/entities/search", body).await
     }
 
-    pub async fn query_entities(&self, body: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    pub async fn query_entities(
+        &self,
+        body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
         self.post_json("/v2/vectordb/entities/query", body).await
     }
 }

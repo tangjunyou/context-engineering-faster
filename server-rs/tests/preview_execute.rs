@@ -126,7 +126,10 @@ async fn preview_exec_resolves_chat_and_sql_variables_server_side() {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert!(json["text"].as_str().unwrap().contains("[User]: Hello"));
-    assert!(json["text"].as_str().unwrap().contains("[Assistant]: World"));
+    assert!(json["text"]
+        .as_str()
+        .unwrap()
+        .contains("[Assistant]: World"));
     assert!(json["text"].as_str().unwrap().contains("Name: Alice"));
 }
 
@@ -135,4 +138,3 @@ fn sqlite_url(path: &std::path::Path) -> String {
     let p = p.strip_prefix('/').unwrap_or(p.as_str());
     format!("sqlite:///{p}")
 }
-

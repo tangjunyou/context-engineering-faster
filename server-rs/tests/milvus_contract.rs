@@ -45,7 +45,9 @@ async fn milvus_client_hits_expected_endpoints_and_headers() {
     let _ = client.list_collections().await.unwrap();
     let req = seen.lock().unwrap().clone();
     assert!(req.starts_with("POST /v2/vectordb/collections/list HTTP/1.1\r\n"));
-    assert!(req.to_ascii_lowercase().contains("\r\nauthorization: bearer t\r\n"));
+    assert!(req
+        .to_ascii_lowercase()
+        .contains("\r\nauthorization: bearer t\r\n"));
 
     let (base_url, seen) = serve_one(r#"{"code":0,"data":{"insertCount":1,"insertIds":[1]}}"#);
     let client = MilvusRestClient::new(base_url.clone(), Some("t".to_string()));
@@ -59,7 +61,9 @@ async fn milvus_client_hits_expected_endpoints_and_headers() {
     let (base_url, seen) = serve_one(r#"{"code":0,"data":[{"id":1,"distance":0.1}]}"#);
     let client = MilvusRestClient::new(base_url.clone(), Some("t".to_string()));
     let _ = client
-        .search_entities(serde_json::json!({"collectionName":"c","data":[[0.1]],"annsField":"vector","limit":1}))
+        .search_entities(
+            serde_json::json!({"collectionName":"c","data":[[0.1]],"annsField":"vector","limit":1}),
+        )
         .await
         .unwrap();
     let req = seen.lock().unwrap().clone();
@@ -74,4 +78,3 @@ async fn milvus_client_hits_expected_endpoints_and_headers() {
     let req = seen.lock().unwrap().clone();
     assert!(req.starts_with("POST /v2/vectordb/entities/query HTTP/1.1\r\n"));
 }
-
