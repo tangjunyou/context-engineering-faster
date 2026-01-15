@@ -6,7 +6,13 @@ import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
 
 function Breadcrumb({ ...props }: React.ComponentProps<"nav">) {
-  return <nav aria-label={i18n.t("breadcrumb.aria")} data-slot="breadcrumb" {...props} />;
+  return (
+    <nav
+      aria-label={i18n.t("breadcrumb.aria")}
+      data-slot="breadcrumb"
+      {...props}
+    />
+  );
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {

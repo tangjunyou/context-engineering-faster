@@ -199,7 +199,9 @@ function Sidebar({
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{i18n.t("sidebar.title")}</SheetTitle>
-            <SheetDescription>{i18n.t("sidebar.mobileDescription")}</SheetDescription>
+            <SheetDescription>
+              {i18n.t("sidebar.mobileDescription")}
+            </SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -730,5 +732,5 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar
+  useSidebar,
 };

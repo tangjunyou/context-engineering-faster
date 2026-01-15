@@ -79,4 +79,3 @@ export async function requestJson<T>(
     window.clearTimeout(timeoutId);
   }
 }
-

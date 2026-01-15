@@ -123,7 +123,8 @@ const common = {
       inputDesc: "当前用户的最新输入",
       memoryContent: "用户资料：\n姓名：{{user_name}}\n偏好：VIP 用户",
       metadataContent: "当前时间：{{current_time}}\n系统：Linux",
-      historyContent: "[用户]：上次推荐的书我看完了。\n[助手]：很高兴听到这个！觉得怎么样？",
+      historyContent:
+        "[用户]：上次推荐的书我看完了。\n[助手]：很高兴听到这个！觉得怎么样？",
     },
   },
   notFound: {

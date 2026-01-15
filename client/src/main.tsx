@@ -6,8 +6,12 @@ import i18n from "./i18n";
 import "./index.css";
 import { router } from "./router";
 
-const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT as string | undefined;
-const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID as string | undefined;
+const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT as
+  | string
+  | undefined;
+const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID as
+  | string
+  | undefined;
 
 if (analyticsEndpoint && analyticsWebsiteId) {
   const script = document.createElement("script");

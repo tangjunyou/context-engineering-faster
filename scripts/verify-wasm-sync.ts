@@ -27,7 +27,12 @@ async function main() {
     "wasm",
     "context_engine_bg.wasm"
   );
-  const pkgWasm = path.join(repoRoot, "context-engine", "pkg", "context_engine_bg.wasm");
+  const pkgWasm = path.join(
+    repoRoot,
+    "context-engine",
+    "pkg",
+    "context_engine_bg.wasm"
+  );
 
   const hasFrontendWasm = await fileExists(frontendWasm);
   const hasPkgWasm = await fileExists(pkgWasm);
@@ -40,7 +45,10 @@ async function main() {
     return;
   }
 
-  const [frontendHash, pkgHash] = await Promise.all([sha256(frontendWasm), sha256(pkgWasm)]);
+  const [frontendHash, pkgHash] = await Promise.all([
+    sha256(frontendWasm),
+    sha256(pkgWasm),
+  ]);
 
   if (frontendHash !== pkgHash) {
     throw new Error(
@@ -58,4 +66,3 @@ main().catch(err => {
   console.error(String(err?.stack || err));
   process.exitCode = 1;
 });
-

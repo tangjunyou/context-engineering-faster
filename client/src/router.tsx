@@ -1,7 +1,11 @@
 import App from "@/App";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/NotFound";
-import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 
 const rootRoute = createRootRoute({
   component: App,
@@ -26,4 +30,3 @@ declare module "@tanstack/react-router" {
     router: typeof router;
   }
 }
-
