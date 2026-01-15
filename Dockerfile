@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm -s exec tsx scripts/verify-wasm-sync.ts
 RUN pnpm -s exec vite build
 
-FROM rust:1.85-bookworm AS backend-builder
+FROM rust:1.88-bookworm AS backend-builder
 WORKDIR /app
 
 COPY context-engine/Cargo.toml ./context-engine/Cargo.toml
