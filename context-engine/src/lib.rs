@@ -1,6 +1,6 @@
-use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct Variable {
@@ -51,7 +51,7 @@ impl ContextEngine {
 
         for node in nodes {
             let mut content = node.content.clone();
-            
+
             // Simple interpolation
             for (name, value) in &self.variables {
                 let placeholder = format!("{{{{{}}}}}", name);
