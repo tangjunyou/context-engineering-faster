@@ -41,6 +41,12 @@ vi.mock("@/lib/wasm/context_engine", () => {
   };
 });
 
+vi.mock("@/lib/api/context-engine", () => ({
+  executeTrace: vi.fn(async () => {
+    throw new Error("api unavailable");
+  }),
+}));
+
 describe("PreviewPanel", () => {
   beforeEach(async () => {
     vi.useFakeTimers();

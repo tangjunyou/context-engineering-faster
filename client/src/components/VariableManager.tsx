@@ -42,6 +42,7 @@ export default function VariableManager() {
         name: z.string().min(1, t("variableManager.validation.nameRequired")),
         type: z.enum(["static", "dynamic"]),
         value: z.string(),
+        resolver: z.string().optional(),
       }),
     [t]
   );
@@ -50,7 +51,7 @@ export default function VariableManager() {
 
   const form = useForm<VariableFormValues>({
     resolver: zodResolver(variableSchema),
-    defaultValues: { name: "", type: "static", value: "" },
+    defaultValues: { name: "", type: "static", value: "", resolver: "" },
     mode: "onChange",
   });
 
@@ -60,6 +61,7 @@ export default function VariableManager() {
       name: v.name,
       type: v.type,
       value: v.value ?? "",
+      resolver: v.resolver ?? "",
     });
   };
 
@@ -84,6 +86,7 @@ export default function VariableManager() {
       type: "static",
       value: "",
       source: t("variableManager.userDefined"),
+      resolver: "",
     };
     addVariable(newVar);
     handleEdit(newVar);
@@ -192,6 +195,27 @@ export default function VariableManager() {
                       )}
                     />
 
+                    {form.watch("type") === "dynamic" && (
+                      <FormField
+                        control={form.control}
+                        name="resolver"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              {t("variableManager.sourceUrl")}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                className="h-8 font-mono text-xs"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <div className="flex justify-end gap-2 mt-2">
                       <Button
                         type="button"
@@ -230,6 +254,11 @@ export default function VariableManager() {
                     <div className="text-xs text-muted-foreground truncate max-w-[180px]">
                       {v.value || t("variableManager.noValue")}
                     </div>
+                    {v.type === "dynamic" && v.resolver && (
+                      <div className="text-[10px] text-muted-foreground/70 mt-1 font-mono truncate max-w-[180px]">
+                        {v.resolver}
+                      </div>
+                    )}
                     <div className="text-[10px] text-muted-foreground/70 mt-1">
                       {t("variableManager.source")}: {v.source}
                     </div>

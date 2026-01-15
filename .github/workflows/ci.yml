@@ -6,7 +6,11 @@ on:
 
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +37,11 @@ jobs:
         run: pnpm -s exec vite build
 
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -106,6 +114,12 @@ jobs:
       - name: Verify SPA fallback
         run: |
           curl -fsS http://127.0.0.1:3000/some/route >/dev/null
+      - name: Verify execute trace API
+        run: |
+          curl -fsS http://127.0.0.1:3000/api/execute \
+            -H 'content-type: application/json' \
+            -d '{"nodes":[{"id":"n1","label":"System","kind":"system","content":"Hello {{name}}"}],"variables":[{"id":"v1","name":"name","value":"Alice"}],"outputStyle":"labeled"}' \
+            | tr -d '\r' | grep -q '"segments"'
       - name: Verify cache headers for index.html
         run: |
           curl -fsSI http://127.0.0.1:3000/ | tr -d '\r' | grep -i '^cache-control: no-cache$'

@@ -18,6 +18,7 @@ export interface Variable {
   value: string; // For static variables, this is the value. For dynamic, it's a placeholder or example.
   description?: string;
   source?: string;
+  resolver?: string;
 }
 
 export interface ContextNodeData extends Record<string, unknown> {
