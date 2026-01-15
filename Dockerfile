@@ -10,7 +10,7 @@ COPY shared ./shared
 RUN pnpm install --frozen-lockfile
 RUN pnpm -s exec vite build
 
-FROM rust:1.78-bookworm AS backend-builder
+FROM rust:1.83-bookworm AS backend-builder
 WORKDIR /app
 
 COPY server-rs/Cargo.toml server-rs/Cargo.lock ./server-rs/
