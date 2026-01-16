@@ -3666,11 +3666,11 @@ async fn list_neo4j_labels(
     #[cfg(not(feature = "neo4j"))]
     {
         let _ = cfg;
-        return (
+        (
             StatusCode::NOT_IMPLEMENTED,
             Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "neo4j" })),
         )
-            .into_response();
+            .into_response()
     }
 
     #[cfg(feature = "neo4j")]
