@@ -746,7 +746,10 @@ async fn create_local_sqlite_datasource(
 }
 
 fn sqlite_url_for_path(path: &std::path::Path) -> String {
-    let p = path.to_string_lossy().replace('\\', "/");
+    let mut p = path.to_string_lossy().replace('\\', "/");
+    if let Some(stripped) = p.strip_prefix("//?/") {
+        p = stripped.to_string();
+    }
     let p = p.strip_prefix('/').unwrap_or(p.as_ref());
     format!("sqlite:///{p}")
 }
