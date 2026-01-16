@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -118,6 +119,9 @@ export function ProjectManagerDialog(props: {
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{t("projects.title")}</DialogTitle>
+          <DialogDescription>
+            在这里创建、保存与加载工程（图、变量等状态会随工程一起保存）。
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-6">
@@ -131,6 +135,8 @@ export function ProjectManagerDialog(props: {
                   value={nameDraft}
                   onChange={e => setNameDraft(e.target.value)}
                   className="h-9"
+                  name="projectName"
+                  autoComplete="off"
                 />
                 <Button
                   variant="outline"

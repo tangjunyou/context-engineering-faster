@@ -166,3 +166,19 @@ export async function listTableColumns(input: {
     `/api/datasources/${dataSourceId}/tables/${encodeURIComponent(table)}/columns`
   );
 }
+
+export async function listNeo4jLabels(input: {
+  dataSourceId: string;
+}): Promise<{ labels: string[] }> {
+  return requestJson<{ labels: string[] }>(
+    `/api/datasources/${input.dataSourceId}/neo4j/labels`
+  );
+}
+
+export async function listMilvusCollections(input: {
+  dataSourceId: string;
+}): Promise<{ collections: string[]; raw: unknown }> {
+  return requestJson<{ collections: string[]; raw: unknown }>(
+    `/api/datasources/${input.dataSourceId}/milvus/collections`
+  );
+}

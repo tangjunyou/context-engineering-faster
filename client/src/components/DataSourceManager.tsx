@@ -297,7 +297,11 @@ export default function DataSourceManager() {
                       {t("dataSourceManager.name")}
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} className="h-8 font-mono text-xs" />
+                      <Input
+                        {...field}
+                        className="h-8 font-mono text-xs"
+                        autoComplete="off"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -341,7 +345,11 @@ export default function DataSourceManager() {
                       {t("dataSourceManager.url")}
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} className="h-8 font-mono text-xs" />
+                      <Input
+                        {...field}
+                        className="h-8 font-mono text-xs"
+                        autoComplete="off"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

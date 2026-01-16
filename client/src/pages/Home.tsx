@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -11,10 +11,10 @@ import "@xyflow/react/dist/style.css";
 import { useStore } from "@/lib/store";
 import type { ContextFlowNode, NodeType } from "@/lib/types";
 import ContextNode from "@/components/ContextNode";
-import VariableManager from "@/components/VariableManager";
-import DataSourceManager from "@/components/DataSourceManager";
-import PropertyInspector from "@/components/PropertyInspector";
-import PreviewPanel from "@/components/PreviewPanel";
+const VariableManager = lazy(() => import("@/components/VariableManager"));
+const DataSourceManager = lazy(() => import("@/components/DataSourceManager"));
+const PropertyInspector = lazy(() => import("@/components/PropertyInspector"));
+const PreviewPanel = lazy(() => import("@/components/PreviewPanel"));
 import {
   ResizableHandle,
   ResizablePanel,
@@ -187,9 +187,25 @@ export default function Home() {
 
             <div className="flex-1 overflow-hidden">
               {activeLeftPanel === "variables" ? (
-                <VariableManager />
+                <Suspense
+                  fallback={
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Loading…
+                    </div>
+                  }
+                >
+                  <VariableManager />
+                </Suspense>
               ) : activeLeftPanel === "datasources" ? (
-                <DataSourceManager />
+                <Suspense
+                  fallback={
+                    <div className="p-4 text-sm text-muted-foreground">
+                      Loading…
+                    </div>
+                  }
+                >
+                  <DataSourceManager />
+                </Suspense>
               ) : (
                 <div className="p-4 grid gap-2">
                   <div className="text-xs font-bold text-muted-foreground mb-2 uppercase">
@@ -338,11 +354,19 @@ export default function Home() {
             </div>
 
             <div className="flex-1 overflow-hidden">
-              {activeRightPanel === "preview" ? (
-                <PreviewPanel />
-              ) : (
-                <PropertyInspector />
-              )}
+              <Suspense
+                fallback={
+                  <div className="p-4 text-sm text-muted-foreground">
+                    Loading…
+                  </div>
+                }
+              >
+                {activeRightPanel === "preview" ? (
+                  <PreviewPanel />
+                ) : (
+                  <PropertyInspector />
+                )}
+              </Suspense>
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>

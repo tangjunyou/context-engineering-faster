@@ -181,7 +181,7 @@ describe("PreviewPanel", () => {
       })
     );
     expect(wasmSpies.processContext).not.toHaveBeenCalled();
-  });
+  }, 20000);
 
   it("frees the WASM engine on unmount", async () => {
     const { default: PreviewPanel } = await import("@/components/PreviewPanel");

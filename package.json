@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsx scripts/verify-wasm-sync.ts && vite build && cargo build --release --manifest-path server-rs/Cargo.toml",
-    "start": "cargo run --release --manifest-path server-rs/Cargo.toml -- --static-dir dist/public",
+    "start": "tsx scripts/verify-wasm-sync.ts && vite build && cargo run --release --manifest-path server-rs/Cargo.toml -- --static-dir dist/public",
     "desktop:dev": "tauri dev",
     "desktop:prepare": "tsx scripts/prepare-tauri-sidecar.ts",
     "desktop:build": "pnpm -s desktop:prepare && cross-env TAURI_CONFIG=src-tauri/tauri.bundle.conf.json tauri build",

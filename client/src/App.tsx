@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Outlet } from "@tanstack/react-router";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { Suspense } from "react";
 
 // NOTE: About Theme
 // - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
@@ -18,7 +19,15 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="h-screen w-screen flex items-center justify-center text-sm text-muted-foreground">
+                Loading…
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

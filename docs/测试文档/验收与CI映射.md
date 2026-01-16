@@ -19,7 +19,7 @@
 | 静态资源缓存策略（index no-cache / assets immutable / wasm MIME） | `server-rs/tests/static_spa.rs`（已存在）+ docker job 断言（已存在） | PR 必跑 | 线上性能与正确性 |
 | 数据导入（Dataset/ImportJob、限额、回滚） | 规范：[数据导入规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/数据导入规范.md)；自动化测试：SQLite 端到端 + 负向用例（新增） | PR 必跑 | PR 不依赖外部服务，先锁 SQLite |
 | 数据源能力（SQL/Neo4j/Milvus 浏览与抽取） | 规范：[数据源能力规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/数据源能力规范.md)；PR：feature gate 契约测试（已存在/持续补齐） | PR 必跑 | 外部端到端放 Nightly |
-| 变量抽取 DSL/Builder（错误码、回退、依赖环） | 规范：[变量抽取DSL与Builder规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/变量抽取DSL与Builder规范.md)；server-rs 变量解析集成测试矩阵（持续补齐） | PR 必跑 | 以 trace 契约作为断言核心 |
+| 变量抽取 DSL/Builder（错误码、回退、依赖环） | 规范：[变量抽取DSL与Builder规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/变量抽取DSL与Builder规范.md)；`server-rs/tests/preview_execute.rs` + `server-rs/tests/variable_library_crud.rs`（持续补齐） | PR 必跑 | 以 trace 契约作为断言核心 |
 | Projects/Sessions 回放（跨端一致、chat 变量） | 规范：[Projects与Sessions回放规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/Projects与Sessions回放规范.md)；projects/sessions API 端到端回归（持续补齐） | PR 必跑 | 作为“可复现”的核心门禁 |
 
 ## CI 分层建议（当前仓库已基本具备）

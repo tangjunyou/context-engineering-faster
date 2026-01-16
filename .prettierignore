@@ -9,3 +9,4 @@ ideas.md
 client/src/lib/wasm
 context-engine/pkg
 src-tauri/gen
+data

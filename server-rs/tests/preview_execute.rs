@@ -131,6 +131,18 @@ async fn preview_exec_resolves_chat_and_sql_variables_server_side() {
         .unwrap()
         .contains("[Assistant]: World"));
     assert!(json["text"].as_str().unwrap().contains("Name: Alice"));
+
+    let messages = json["messages"].as_array().unwrap();
+    let resolved = messages
+        .iter()
+        .filter(|m| m["code"].as_str() == Some("variable_resolved"))
+        .collect::<Vec<_>>();
+    assert_eq!(resolved.len(), 2);
+    for m in resolved {
+        assert!(m["details"]["durationMs"].as_u64().is_some());
+        assert!(m["details"]["variableName"].as_str().is_some());
+        assert!(m["details"]["scheme"].as_str().is_some());
+    }
 }
 
 fn sqlite_url(path: &std::path::Path) -> String {
