@@ -10,6 +10,9 @@
 
 | 规格/目标 | 自动化测试落点 | CI 门禁 | 备注 |
 |---|---|---|---|
+| 新手黄金路径（空白→模板→运行→trace 可解释） | 前端 Vitest：黄金路径交互测试（新增）；Docker job：execute 冒烟（已存在） | PR 必跑 | 规范：[新手黄金路径验收规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/新手黄金路径验收规范.md) |
+| GP2 动态变量测试（失败可操作建议） | 前端 Vitest：Builder 失败提示映射（新增）；后端 resolver 契约测试（持续补齐） | PR 必跑 | 关键：`errorCode` 驱动建议动作 |
+| GP3 Dataset 批量回放与 Run 记录 | `server-rs` 集成测试：dataset replay + runs 查询（新增）；前端 Vitest：回放 UI 与 trace 复盘（新增） | PR 必跑 | 规范：[Dataset回放与Run记录规范.md](file:///Users/jingshun/Desktop/上下文工程项目/docs/测试文档/Dataset回放与Run记录规范.md) |
 | 上下文装配语义（文本拼接、缺失变量定位、trace 片段） | `context-engine` 单测（已存在）与 `server-rs` `/api/execute` 集成测试（新增） | PR 必跑 | 引擎/服务两条路径都要稳定 |
 | 变量执行（dynamic resolver 的错误映射与回退占位） | 前端 Vitest（补齐对 resolver 的 mock 测试）；后端后续下沉后由 `server-rs` 覆盖 | PR 必跑 | M2 后以服务端执行为主 |
 | SQL 只读限制（禁止写操作） | `server-rs/tests/security_and_limits.rs::sql_query_rejects_non_select`（新增） | PR 必跑 | 统一错误码 `readonly_required` |

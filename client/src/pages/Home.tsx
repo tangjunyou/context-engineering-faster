@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { shallow } from "zustand/shallow";
 import { ProjectManagerDialog } from "@/components/ProjectManagerDialog";
 import { SessionManagerDialog } from "@/components/SessionManagerDialog";
+import QuickStartOverlay from "@/components/QuickStartOverlay";
 
 const nodeTypes = {
   contextNode: ContextNode,
@@ -42,6 +43,7 @@ export default function Home() {
     onConnect,
     selectNode,
     addNode,
+    applyContextTemplate,
   } = useStore(
     state => ({
       projectName: state.projectName,
@@ -52,6 +54,7 @@ export default function Home() {
       onConnect: state.onConnect,
       selectNode: state.selectNode,
       addNode: state.addNode,
+      applyContextTemplate: state.applyContextTemplate,
     }),
     shallow
   );
@@ -64,6 +67,15 @@ export default function Home() {
   >("preview");
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+  const [quickStartOpen, setQuickStartOpen] = useState(false);
+  const [didAutoOpenQuickStart, setDidAutoOpenQuickStart] = useState(false);
+
+  useEffect(() => {
+    if (!didAutoOpenQuickStart && nodes.length === 0) {
+      setDidAutoOpenQuickStart(true);
+      setQuickStartOpen(true);
+    }
+  }, [didAutoOpenQuickStart, nodes.length]);
 
   const handleNodeClick = (_: React.MouseEvent, node: ContextFlowNode) => {
     selectNode(node.id);
@@ -105,6 +117,13 @@ export default function Home() {
           <span>{t("app.projectLabel", { name: projectName })}</span>
           <div className="h-4 w-[1px] bg-border"></div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => setQuickStartOpen(true)}
+            >
+              {t("quickStart.open")}
+            </Button>
             <Button
               variant="outline"
               className="h-7 px-2 text-xs"
@@ -152,6 +171,14 @@ export default function Home() {
         <SessionManagerDialog
           open={sessionDialogOpen}
           onOpenChange={setSessionDialogOpen}
+        />
+        <QuickStartOverlay
+          open={quickStartOpen}
+          onOpenChange={setQuickStartOpen}
+          onSelectTemplate={templateId => {
+            applyContextTemplate(templateId);
+            setQuickStartOpen(false);
+          }}
         />
         <ResizablePanelGroup direction="horizontal">
           {/* Left Sidebar */}
@@ -283,6 +310,34 @@ export default function Home() {
           {/* Center Canvas */}
           <ResizablePanel defaultSize={55}>
             <div className="h-full w-full bg-background relative">
+              {nodes.length === 0 ? (
+                <div className="absolute inset-0 z-10 flex items-center justify-center">
+                  <div className="max-w-md w-[92%] bg-card border border-border rounded-lg p-6 shadow-xl">
+                    <div className="text-sm font-semibold">
+                      {t("canvas.emptyTitle")}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {t("canvas.emptyDescription")}
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <Button onClick={() => setQuickStartOpen(true)}>
+                        {t("canvas.chooseTemplate")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleAddNode(
+                            "system_prompt",
+                            t("componentsPanel.systemPrompt")
+                          )
+                        }
+                      >
+                        {t("canvas.addSystemNode")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <ReactFlow
                 nodes={nodes}
                 edges={edges}

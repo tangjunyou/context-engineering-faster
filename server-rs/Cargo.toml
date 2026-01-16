@@ -24,6 +24,7 @@ aes-gcm = "0.10"
 base64 = "0.22"
 bytes = "1"
 csv = "1"
+sha2 = "0.10"
 
 [features]
 neo4j = ["dep:neo4rs"]

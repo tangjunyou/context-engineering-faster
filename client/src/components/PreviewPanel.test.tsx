@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { useStore } from "@/lib/store";
 
@@ -231,5 +231,66 @@ describe("PreviewPanel", () => {
 
     await Promise.resolve();
     expect(toast.error).toHaveBeenCalledWith("preview.cycleDetected");
+  });
+
+  it("offers one-click creation for missing variables in the preview", async () => {
+    const { executePreviewTrace } = await import("@/lib/api/context-engine");
+    vi.mocked(executePreviewTrace).mockResolvedValue({
+      runId: "run",
+      createdAt: "now",
+      outputStyle: "labeled",
+      text: "Hello {{foo}}",
+      segments: [
+        {
+          nodeId: "a",
+          label: "A",
+          kind: "system",
+          template: "Hello {{foo}}",
+          rendered: "Hello {{foo}}",
+          missingVariables: ["foo"],
+          messages: [],
+        },
+      ],
+      messages: [],
+    });
+
+    useStore.setState({
+      nodes: [
+        {
+          id: "a",
+          type: "contextNode",
+          position: { x: 0, y: 0 },
+          data: {
+            label: "A",
+            type: "system_prompt",
+            content: "Hello {{foo}}",
+            variables: [],
+          },
+        },
+      ],
+      edges: [],
+      variables: [],
+      selectedNodeId: null,
+    });
+
+    const { default: PreviewPanel } = await import("@/components/PreviewPanel");
+    render(<PreviewPanel />);
+
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(
+      screen.getAllByText("preview.missingVariablesTitle").length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/foo/).length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: "preview.createMissingVariables",
+      })[0]!
+    );
+
+    expect(useStore.getState().variables.some(v => v.name === "foo")).toBe(
+      true
+    );
   });
 });

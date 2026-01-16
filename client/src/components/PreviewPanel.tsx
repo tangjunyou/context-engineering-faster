@@ -14,6 +14,7 @@ import type { ContextFlowNode, NodeType } from "@/lib/types";
 import { shallow } from "zustand/shallow";
 import { executePreviewTrace } from "@/lib/api/context-engine";
 import type { TraceRun } from "@shared/trace";
+import { getSuggestionForErrorCode } from "@/lib/errorSuggestions";
 
 export default function PreviewPanel() {
   const { t } = useTranslation();
@@ -51,6 +52,36 @@ export default function PreviewPanel() {
   const [trace, setTrace] = useState<TraceRun | null>(null);
   const [traceView, setTraceView] = useState<TraceRun | null>(null);
   const [traceHistory, setTraceHistory] = useState<TraceRun[]>([]);
+
+  const missingVariables = useMemo(() => {
+    const run = traceView ?? trace;
+    if (!run) return [];
+    const set = new Set<string>();
+    for (const seg of run.segments) {
+      for (const name of seg.missingVariables) {
+        if (name) set.add(name);
+      }
+    }
+    return Array.from(set).sort();
+  }, [trace, traceView]);
+
+  const createMissingVariables = (names: string[]) => {
+    const existing = new Set(variables.map(v => v.name));
+    for (const name of names) {
+      if (!name || existing.has(name)) continue;
+      useStore.getState().addVariable({
+        id: `missing_${Date.now()}_${name}`,
+        name,
+        type: "static",
+        value: "",
+        description: "由缺失变量提示创建",
+        source: "missing",
+      });
+    }
+    toast.success(
+      t("preview.missingVariablesCreated", { n: names.length.toString() })
+    );
+  };
 
   const { sortedNodes, hasCycle } = useMemo(() => {
     const g = new dagre.graphlib.Graph();
@@ -292,6 +323,26 @@ export default function PreviewPanel() {
                 </AlertDescription>
               </Alert>
             )}
+            {missingVariables.length > 0 && (
+              <Alert className="mb-4">
+                <AlertTriangle />
+                <AlertTitle>{t("preview.missingVariablesTitle")}</AlertTitle>
+                <AlertDescription className="flex items-center justify-between gap-3">
+                  <div>
+                    {t("preview.missingVariablesSummary", {
+                      names: missingVariables.join(", "),
+                    })}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => createMissingVariables(missingVariables)}
+                  >
+                    {t("preview.createMissingVariables")}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
             <pre className="font-mono text-xs whitespace-pre-wrap text-foreground/80 leading-relaxed">
               {previewText}
             </pre>
@@ -362,6 +413,10 @@ export default function PreviewPanel() {
                           typeof details?.errorCode === "string"
                             ? details.errorCode
                             : null;
+                        const suggestion = getSuggestionForErrorCode(
+                          errorCode,
+                          t
+                        );
                         const isVariableMessage =
                           m.code === "variable_static" ||
                           m.code === "variable_resolved" ||
@@ -375,6 +430,9 @@ export default function PreviewPanel() {
                             <div>
                               [{m.severity}] {m.code}
                               {errorCode ? ` (${errorCode})` : ""}: {m.message}
+                              {suggestion
+                                ? ` ${t("preview.suggestion")}${suggestion}`
+                                : ""}
                             </div>
                             {isVariableMessage && variableId && (
                               <Button
