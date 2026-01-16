@@ -18,6 +18,7 @@ import type {
   ContextNodeData,
   Variable,
 } from "./types";
+import { getContextTemplateById } from "@/lib/templates";
 
 type RFState = {
   projectId: string | null;
@@ -46,6 +47,7 @@ type RFState = {
     edges: ContextFlowEdge[];
     variables: Variable[];
   }) => void;
+  applyContextTemplate: (templateId: string) => void;
 };
 
 export const useStore = createWithEqualityFn<RFState>()(
@@ -117,6 +119,15 @@ export const useStore = createWithEqualityFn<RFState>()(
           nodes: input.nodes,
           edges: input.edges,
           variables: input.variables,
+          selectedNodeId: null,
+        });
+      },
+      applyContextTemplate: templateId => {
+        const tpl = getContextTemplateById(templateId);
+        set({
+          nodes: tpl.nodes,
+          edges: tpl.edges,
+          variables: tpl.variables,
           selectedNodeId: null,
         });
       },

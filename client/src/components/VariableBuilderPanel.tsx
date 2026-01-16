@@ -20,6 +20,8 @@ import {
   type DataSource,
 } from "@/lib/api/datasources";
 import { listSessions, type SessionSummary } from "@/lib/api/sessions";
+import { getSuggestionForErrorCode } from "@/lib/errorSuggestions";
+import { useTranslation } from "react-i18next";
 
 type Scheme = "sql" | "chat" | "neo4j" | "milvus";
 
@@ -49,6 +51,7 @@ function formatApiError(err: unknown): string {
 }
 
 export default function VariableBuilderPanel() {
+  const { t } = useTranslation();
   const { projectId } = useStore(s => ({ projectId: s.projectId }));
   const [scheme, setScheme] = useState<Scheme>("sql");
   const [name, setName] = useState("var_name");
@@ -643,6 +646,24 @@ export default function VariableBuilderPanel() {
                   [{testResult.trace.severity}] {testResult.trace.code}:{" "}
                   {testResult.trace.message}
                 </div>
+                {(() => {
+                  const details =
+                    testResult.trace.details &&
+                    typeof testResult.trace.details === "object"
+                      ? (testResult.trace.details as any)
+                      : null;
+                  const errorCode =
+                    details && typeof details.errorCode === "string"
+                      ? details.errorCode
+                      : null;
+                  const suggestion = getSuggestionForErrorCode(errorCode, t);
+                  return suggestion ? (
+                    <div className="mt-2 text-xs text-primary">
+                      {t("preview.suggestion")}
+                      {suggestion}
+                    </div>
+                  ) : null;
+                })()}
                 <pre className="mt-2 text-[10px] text-muted-foreground whitespace-pre-wrap">
                   {JSON.stringify(testResult.trace.details ?? null, null, 2)}
                 </pre>
