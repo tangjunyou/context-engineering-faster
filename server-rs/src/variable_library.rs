@@ -388,17 +388,18 @@ pub(crate) async fn test_variable(
 }
 
 fn dir_for_project(state: &AppState, project_id: &str) -> std::path::PathBuf {
-    state
-        .data_dir
-        .join("variable-library")
-        .join(project_id)
+    state.data_dir.join("variable-library").join(project_id)
 }
 
 fn item_path(state: &AppState, project_id: &str, id: &str) -> std::path::PathBuf {
     dir_for_project(state, project_id).join(format!("{id}.json"))
 }
 
-async fn read_item(state: &AppState, project_id: &str, id: &str) -> anyhow::Result<VariableLibraryItem> {
+async fn read_item(
+    state: &AppState,
+    project_id: &str,
+    id: &str,
+) -> anyhow::Result<VariableLibraryItem> {
     let path = item_path(state, project_id, id);
     let text = tokio::fs::read_to_string(path).await?;
     Ok(serde_json::from_str(&text)?)

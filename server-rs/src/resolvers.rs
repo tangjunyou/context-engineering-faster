@@ -49,7 +49,10 @@ impl ResolverRegistry {
     }
 }
 
-pub(crate) async fn resolve_variable_with_trace(state: AppState, v: VariableSpec) -> ResolveWithTrace {
+pub(crate) async fn resolve_variable_with_trace(
+    state: AppState,
+    v: VariableSpec,
+) -> ResolveWithTrace {
     let started = now_ms();
 
     if v.r#type != "dynamic" {
@@ -98,12 +101,15 @@ pub(crate) async fn resolve_variable_with_trace(state: AppState, v: VariableSpec
             },
         };
     }
-    let scheme = resolver.split("://").next().unwrap_or("").trim().to_string();
+    let scheme = resolver
+        .split("://")
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_string();
 
     let registry = ResolverRegistry::new();
-    let result = registry
-        .resolve(state, &scheme, &resolver, v.clone())
-        .await;
+    let result = registry.resolve(state, &scheme, &resolver, v.clone()).await;
     let duration_ms = now_ms().saturating_sub(started);
 
     match result {
@@ -138,21 +144,21 @@ pub(crate) async fn resolve_variable_with_trace(state: AppState, v: VariableSpec
             let error_code = classify_error_code(&err_string);
             ResolveWithTrace {
                 result: Err(err),
-            trace_message: TraceMessage {
-                severity: TraceSeverity::Warn,
-                code: "variable_resolve_failed".to_string(),
-                message: format!("变量 {} 解析失败：{}", v.name, err_string),
-                details: Some(json!({
-                    "variableId": v.id,
-                    "variableName": v.name,
-                    "type": v.r#type,
-                    "scheme": scheme,
-                    "resolver": resolver,
-                    "durationMs": duration_ms,
-                    "errorCode": error_code,
-                    "errorMessage": err_string,
-                })),
-            },
+                trace_message: TraceMessage {
+                    severity: TraceSeverity::Warn,
+                    code: "variable_resolve_failed".to_string(),
+                    message: format!("变量 {} 解析失败：{}", v.name, err_string),
+                    details: Some(json!({
+                        "variableId": v.id,
+                        "variableName": v.name,
+                        "type": v.r#type,
+                        "scheme": scheme,
+                        "resolver": resolver,
+                        "durationMs": duration_ms,
+                        "errorCode": error_code,
+                        "errorMessage": err_string,
+                    })),
+                },
             }
         }
     }

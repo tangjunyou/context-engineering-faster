@@ -15,9 +15,7 @@ use axum::{
     Json, Router,
 };
 use bytes::Bytes;
-use context_engine::{
-    render_with_trace, EngineNode, OutputStyle, TraceMessage, Variable,
-};
+use context_engine::{render_with_trace, EngineNode, OutputStyle, TraceMessage, Variable};
 use flate2::{write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
 use tower::service_fn;
@@ -129,7 +127,8 @@ fn build_app_with_state(
         .route("/projects/{id}", get(get_project).put(upsert_project))
         .route(
             "/projects/{projectId}/variable-library",
-            get(variable_library::list_variable_library).post(variable_library::create_variable_library_item),
+            get(variable_library::list_variable_library)
+                .post(variable_library::create_variable_library_item),
         )
         .route(
             "/projects/{projectId}/variable-library/test",
@@ -3689,12 +3688,17 @@ async fn list_neo4j_labels(
             }
         };
 
-        let mut result = match graph.execute(query("CALL db.labels() YIELD label RETURN label")).await {
+        let mut result = match graph
+            .execute(query("CALL db.labels() YIELD label RETURN label"))
+            .await
+        {
             Ok(r) => r,
             Err(err) => {
                 return (
                     StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": "query_failed", "message": err.to_string() })),
+                    Json(
+                        serde_json::json!({ "error": "query_failed", "message": err.to_string() }),
+                    ),
                 )
                     .into_response();
             }
@@ -3706,7 +3710,9 @@ async fn list_neo4j_labels(
             Err(err) => {
                 return (
                     StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": "query_failed", "message": err.to_string() })),
+                    Json(
+                        serde_json::json!({ "error": "query_failed", "message": err.to_string() }),
+                    ),
                 )
                     .into_response();
             }
@@ -3716,7 +3722,11 @@ async fn list_neo4j_labels(
             }
         }
 
-        (StatusCode::OK, Json(serde_json::json!({ "labels": labels }))).into_response()
+        (
+            StatusCode::OK,
+            Json(serde_json::json!({ "labels": labels })),
+        )
+            .into_response()
     }
 }
 
@@ -3769,7 +3779,9 @@ async fn list_milvus_collections(
             if msg.contains("feature") && msg.contains("未启用") {
                 return (
                     StatusCode::NOT_IMPLEMENTED,
-                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                    Json(
+                        serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" }),
+                    ),
                 )
                     .into_response();
             }
@@ -3786,7 +3798,11 @@ async fn list_milvus_collections(
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|x| x.get("collectionName").and_then(|n| n.as_str()).map(|s| s.to_string()))
+                .filter_map(|x| {
+                    x.get("collectionName")
+                        .and_then(|n| n.as_str())
+                        .map(|s| s.to_string())
+                })
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
