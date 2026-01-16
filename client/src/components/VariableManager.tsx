@@ -14,6 +14,20 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  getVariableLibraryItem,
+  listVariableLibrary,
+  type VariableLibraryItem,
+  type VariableLibrarySummary,
+} from "@/lib/api/variable-library";
+import { toast } from "sonner";
+import {
   Form,
   FormControl,
   FormField,
@@ -24,17 +38,27 @@ import {
 
 export default function VariableManager() {
   const { t } = useTranslation();
-  const { variables, addVariable, updateVariable, deleteVariable } = useStore(
-    state => ({
-      variables: state.variables,
-      addVariable: state.addVariable,
-      updateVariable: state.updateVariable,
-      deleteVariable: state.deleteVariable,
-    }),
-    shallow
-  );
+  const { projectId, variables, addVariable, updateVariable, deleteVariable } =
+    useStore(
+      state => ({
+        projectId: state.projectId,
+        variables: state.variables,
+        addVariable: state.addVariable,
+        updateVariable: state.updateVariable,
+        deleteVariable: state.deleteVariable,
+      }),
+      shallow
+    );
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [libraryList, setLibraryList] = useState<VariableLibrarySummary[]>([]);
+  const [librarySelectedId, setLibrarySelectedId] = useState<string | null>(
+    null
+  );
+  const [librarySelected, setLibrarySelected] =
+    useState<VariableLibraryItem | null>(null);
 
   const variableSchema = useMemo(
     () =>
@@ -92,15 +116,83 @@ export default function VariableManager() {
     handleEdit(newVar);
   };
 
+  const openImport = async () => {
+    if (!projectId) {
+      toast.error("需要先选择/创建项目");
+      return;
+    }
+    setImportOpen(true);
+    setImportLoading(true);
+    setLibraryList([]);
+    setLibrarySelectedId(null);
+    setLibrarySelected(null);
+    try {
+      const list = await listVariableLibrary(projectId);
+      setLibraryList(list);
+    } catch {
+      toast.error("加载变量库失败");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const loadLibraryItem = async (id: string) => {
+    if (!projectId) return;
+    setLibrarySelectedId(id);
+    setLibrarySelected(null);
+    setImportLoading(true);
+    try {
+      const item = await getVariableLibraryItem(projectId, id);
+      setLibrarySelected(item);
+    } catch {
+      toast.error("加载变量详情失败");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const importSelected = () => {
+    const item = librarySelected;
+    if (!item) return;
+    const current =
+      item.versions.find(v => v.versionId === item.currentVersionId) ??
+      item.versions[item.versions.length - 1];
+    if (!current) return;
+    const v: Variable = {
+      id: item.id,
+      name: current.data.name,
+      type:
+        current.data.type === "static" || current.data.type === "dynamic"
+          ? current.data.type
+          : "dynamic",
+      value: current.data.value,
+      description: current.data.description,
+      source: current.data.source ?? "variable_library",
+      resolver: current.data.resolver ?? "",
+    };
+    if (variables.some(x => x.id === v.id)) {
+      updateVariable(v);
+    } else {
+      addVariable(v);
+    }
+    toast.success("已导入到项目变量");
+    setImportOpen(false);
+  };
+
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h2 className="font-mono font-bold text-sm uppercase tracking-wider">
           {t("variableManager.title")}
         </h2>
-        <Button size="sm" variant="outline" onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-1" /> {t("variableManager.add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => void openImport()}>
+            导入变量库
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleAdd}>
+            <Plus className="w-4 h-4 mr-1" /> {t("variableManager.add")}
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -130,6 +222,7 @@ export default function VariableManager() {
                             <Input
                               {...field}
                               className="h-8 font-mono text-xs"
+                              autoComplete="off"
                             />
                           </FormControl>
                           <FormMessage />
@@ -188,6 +281,7 @@ export default function VariableManager() {
                             <Input
                               {...field}
                               className="h-8 font-mono text-xs"
+                              autoComplete="off"
                             />
                           </FormControl>
                           <FormMessage />
@@ -208,6 +302,7 @@ export default function VariableManager() {
                               <Input
                                 {...field}
                                 className="h-8 font-mono text-xs"
+                                autoComplete="off"
                               />
                             </FormControl>
                             <FormMessage />
@@ -287,6 +382,74 @@ export default function VariableManager() {
           ))}
         </div>
       </ScrollArea>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>从变量库导入</DialogTitle>
+            <DialogDescription>
+              选择变量库条目并导入到当前项目变量，用于上下文装配插值与预览。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 overflow-hidden">
+            <div className="border border-border rounded-md overflow-hidden">
+              <ScrollArea className="h-80">
+                <div className="p-2 space-y-1">
+                  {libraryList.map(x => (
+                    <button
+                      key={x.id}
+                      className={`w-full text-left rounded px-2 py-2 text-sm border ${
+                        librarySelectedId === x.id
+                          ? "border-primary bg-primary/10"
+                          : "border-transparent hover:border-border hover:bg-muted/30"
+                      }`}
+                      onClick={() => void loadLibraryItem(x.id)}
+                    >
+                      <div className="font-medium">{x.name}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {x.type}
+                      </div>
+                    </button>
+                  ))}
+                  {libraryList.length === 0 && (
+                    <div className="p-3 text-xs text-muted-foreground">
+                      {importLoading ? "加载中…" : "暂无数据"}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+            <div className="border border-border rounded-md overflow-hidden">
+              <ScrollArea className="h-80">
+                <div className="p-3 space-y-2">
+                  {!librarySelected ? (
+                    <div className="text-sm text-muted-foreground">
+                      选择一个变量查看详情
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-xs font-mono text-primary">
+                        {librarySelected.id}
+                      </div>
+                      <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap">
+                        {JSON.stringify(librarySelected, null, 2)}
+                      </pre>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+              <div className="p-3 border-t border-border flex justify-end">
+                <Button
+                  disabled={!librarySelected}
+                  onClick={() => importSelected()}
+                >
+                  导入
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

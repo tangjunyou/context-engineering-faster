@@ -15,6 +15,7 @@ export type TraceMessage = {
   severity: TraceSeverity;
   code: string;
   message: string;
+  details?: Record<string, unknown>;
 };
 
 export type TraceSegment = {

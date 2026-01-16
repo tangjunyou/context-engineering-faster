@@ -16,7 +16,7 @@ use axum::{
 };
 use bytes::Bytes;
 use context_engine::{
-    render_with_trace, EngineNode, OutputStyle, TraceMessage, TraceSeverity, Variable,
+    render_with_trace, EngineNode, OutputStyle, TraceMessage, Variable,
 };
 use flate2::{write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,8 @@ use tower_http::{
 
 pub mod connectors;
 mod crypto;
+mod resolvers;
+mod variable_library;
 
 #[derive(Clone)]
 struct AppState {
@@ -99,9 +101,17 @@ fn build_app_with_state(
                 )
                 .await
                 .unwrap_or_else(|_| {
-                    let mut res = axum::response::Response::new(Body::from("Not Found"));
-                    *res.status_mut() = StatusCode::NOT_FOUND;
-                    res
+                    if is_fallback {
+                        let mut res = axum::response::Response::new(Body::from(
+                            "Static assets missing. Please run `pnpm build` (or `pnpm dev`) and restart the server.",
+                        ));
+                        *res.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                        res
+                    } else {
+                        let mut res = axum::response::Response::new(Body::from("Not Found"));
+                        *res.status_mut() = StatusCode::NOT_FOUND;
+                        res
+                    }
                 });
 
                 apply_security_headers(response.headers_mut());
@@ -117,6 +127,28 @@ fn build_app_with_state(
         .route("/healthz", get(healthz))
         .route("/projects", get(list_projects).post(create_project))
         .route("/projects/{id}", get(get_project).put(upsert_project))
+        .route(
+            "/projects/{projectId}/variable-library",
+            get(variable_library::list_variable_library).post(variable_library::create_variable_library_item),
+        )
+        .route(
+            "/projects/{projectId}/variable-library/test",
+            post(variable_library::test_variable),
+        )
+        .route(
+            "/projects/{projectId}/variable-library/{id}",
+            get(variable_library::get_variable_library_item)
+                .put(variable_library::update_variable_library_item)
+                .delete(variable_library::delete_variable_library_item),
+        )
+        .route(
+            "/projects/{projectId}/variable-library/{id}/rollback",
+            post(variable_library::rollback_variable_library_item),
+        )
+        .route(
+            "/projects/{projectId}/variable-library/{id}/clone",
+            post(variable_library::clone_variable_library_item),
+        )
         .route(
             "/datasources",
             get(list_datasources).post(create_datasource),
@@ -150,6 +182,11 @@ fn build_app_with_state(
                 .delete(delete_datasource),
         )
         .route("/datasources/{id}/test", post(test_datasource))
+        .route("/datasources/{id}/neo4j/labels", get(list_neo4j_labels))
+        .route(
+            "/datasources/{id}/milvus/collections",
+            get(list_milvus_collections),
+        )
         .route("/datasources/{id}/tables", get(list_datasource_tables))
         .route(
             "/datasources/{id}/tables/{table}/columns",
@@ -310,9 +347,15 @@ async fn api_not_found(method: Method, uri: Uri) -> impl IntoResponse {
 }
 
 fn data_dir_from_env() -> PathBuf {
-    std::env::var("DATA_DIR")
+    let p = std::env::var("DATA_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("data"))
+        .unwrap_or_else(|_| PathBuf::from("data"));
+    if p.is_absolute() {
+        return p;
+    }
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join(p)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -641,8 +684,19 @@ async fn create_local_sqlite_datasource(
         )
             .into_response();
     }
-    let p = db_path.to_string_lossy().replace('\\', "/");
-    let url = format!("sqlite:///{p}");
+    let db_path = tokio::fs::canonicalize(&db_path).await.unwrap_or(db_path);
+    let url = sqlite_url_for_path(&db_path);
+
+    if let Err(err) = list_tables_for_url(&url).await {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "sqlite_init_failed",
+                "message": err.to_string(),
+            })),
+        )
+            .into_response();
+    }
 
     let url_enc = match crypto::encrypt_to_base64(&key, url.as_bytes()) {
         Ok(v) => v,
@@ -690,6 +744,12 @@ async fn create_local_sqlite_datasource(
         }),
     )
         .into_response()
+}
+
+fn sqlite_url_for_path(path: &std::path::Path) -> String {
+    let p = path.to_string_lossy().replace('\\', "/");
+    let p = p.strip_prefix('/').unwrap_or(p.as_ref());
+    format!("sqlite:///{p}")
 }
 
 #[derive(Serialize, Deserialize)]
@@ -3570,6 +3630,174 @@ async fn test_datasource(
     }
 }
 
+async fn list_neo4j_labels(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> axum::response::Response {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+
+    if driver != "neo4j" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+        )
+            .into_response();
+    }
+
+    let cfg = match decrypt_neo4j_config(&state, &id).await {
+        Ok(v) => v,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    #[cfg(not(feature = "neo4j"))]
+    {
+        let _ = cfg;
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "neo4j" })),
+        )
+            .into_response();
+    }
+
+    #[cfg(feature = "neo4j")]
+    {
+        use neo4rs::{query, Graph, Row as _};
+
+        let graph = match Graph::new(&cfg.uri, &cfg.username, &cfg.password) {
+            Ok(g) => g,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "connect_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+
+        let mut result = match graph.execute(query("CALL db.labels() YIELD label RETURN label")).await {
+            Ok(r) => r,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "query_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        };
+
+        let mut labels = Vec::<String>::new();
+        while let Some(row) = match result.next().await {
+            Ok(v) => v,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "query_failed", "message": err.to_string() })),
+                )
+                    .into_response();
+            }
+        } {
+            if let Ok(label) = row.get::<String>("label") {
+                labels.push(label);
+            }
+        }
+
+        (StatusCode::OK, Json(serde_json::json!({ "labels": labels }))).into_response()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MilvusCollectionsResponse {
+    collections: Vec<String>,
+    raw: serde_json::Value,
+}
+
+async fn list_milvus_collections(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> axum::response::Response {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+
+    if driver != "milvus" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+        )
+            .into_response();
+    }
+
+    let cfg = match decrypt_milvus_config(&state, &id).await {
+        Ok(v) => v,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let client = connectors::milvus::MilvusRestClient::new(cfg.base_url, cfg.token);
+    let raw = match client.list_collections().await {
+        Ok(v) => v,
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains("feature") && msg.contains("未启用") {
+                return (
+                    StatusCode::NOT_IMPLEMENTED,
+                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                )
+                    .into_response();
+            }
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "connect_failed", "message": msg })),
+            )
+                .into_response();
+        }
+    };
+
+    let collections = raw
+        .get("data")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.get("collectionName").and_then(|n| n.as_str()).map(|s| s.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    (
+        StatusCode::OK,
+        Json(MilvusCollectionsResponse { collections, raw }),
+    )
+        .into_response()
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TableListResponse {
@@ -4182,19 +4410,16 @@ async fn execute_preview(
     let mut messages = Vec::<TraceMessage>::new();
 
     for v in req.variables.iter() {
-        match resolve_variable_value(&state, v).await {
-            Ok(value) => {
-                vars.insert(v.name.clone(), value);
+        let out = resolvers::resolve_variable_with_trace(state.clone(), v.clone()).await;
+        match out.result {
+            Ok(resolved) => {
+                vars.insert(v.name.clone(), resolved.string_value);
             }
-            Err(err) => {
+            Err(_) => {
                 vars.insert(v.name.clone(), format!("[{}]", v.name));
-                messages.push(TraceMessage {
-                    severity: TraceSeverity::Warn,
-                    code: "variable_resolve_failed".to_string(),
-                    message: format!("变量 {} 解析失败：{}", v.name, err),
-                });
             }
-        }
+        };
+        messages.push(out.trace_message);
     }
 
     let nodes = req
@@ -4212,42 +4437,6 @@ async fn execute_preview(
     let mut trace = render_with_trace(&nodes, &vars, req.output_style, &format!("run_{now}"), &now);
     trace.messages.extend(messages);
     (StatusCode::OK, Json(trace)).into_response()
-}
-
-async fn resolve_variable_value(state: &AppState, v: &VariableSpec) -> anyhow::Result<String> {
-    if v.r#type != "dynamic" {
-        return Ok(v.value.clone());
-    }
-
-    let resolver = v.resolver.as_deref().unwrap_or("").trim();
-    if resolver.starts_with("chat://") {
-        let session_id = resolver.trim_start_matches("chat://");
-        let max_messages = v.value.trim().parse::<usize>().unwrap_or(20);
-        let s = load_session(state, session_id).await?;
-        return Ok(render_session_as_text(&s, max_messages));
-    }
-
-    if resolver.starts_with("sql://") && !v.value.trim().is_empty() {
-        let data_source_id = resolver.trim_start_matches("sql://");
-        let url = decrypt_datasource_url(state, data_source_id).await?;
-        return resolve_sql_value(&url, &v.value).await;
-    }
-
-    if resolver.starts_with("sqlite://") && !v.value.trim().is_empty() {
-        return resolve_sql_value(resolver, &v.value).await;
-    }
-
-    if resolver.starts_with("neo4j://") && !v.value.trim().is_empty() {
-        let data_source_id = resolver.trim_start_matches("neo4j://");
-        return resolve_neo4j_value(state, data_source_id, &v.value).await;
-    }
-
-    if resolver.starts_with("milvus://") {
-        let data_source_id = resolver.trim_start_matches("milvus://");
-        return resolve_milvus_value(state, data_source_id, &v.value).await;
-    }
-
-    Ok(v.value.clone())
 }
 
 async fn resolve_sql_value(url: &str, query: &str) -> anyhow::Result<String> {

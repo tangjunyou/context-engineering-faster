@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
@@ -58,6 +59,8 @@ pub struct TraceMessage {
     pub severity: TraceSeverity,
     pub code: String,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<JsonValue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,6 +157,7 @@ pub fn render_with_trace(
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
+                details: None,
             });
         }
 

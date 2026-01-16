@@ -60,6 +60,22 @@ async fn neo4j_datasource_is_feature_gated_but_api_contract_is_stable() {
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["error"], "connect_failed");
 
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/datasources/{id}/neo4j/labels"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["error"], "feature_not_enabled");
+
     let body = serde_json::json!({
         "nodes": [
             { "id": "n1", "label": "System", "kind": "system", "content": "Neo4j: {{v}}" }

@@ -346,14 +346,56 @@ export default function PreviewPanel() {
                       {t("preview.traceMessages")}
                     </div>
                     <div className="mt-2 space-y-1">
-                      {(traceView ?? trace)!.messages.map((m, idx) => (
-                        <div
-                          key={`${m.code}-${idx}`}
-                          className="text-[10px] text-muted-foreground"
-                        >
-                          [{m.severity}] {m.code}: {m.message}
-                        </div>
-                      ))}
+                      {(traceView ?? trace)!.messages.map((m, idx) => {
+                        const details = m.details as
+                          | Record<string, unknown>
+                          | undefined;
+                        const variableId =
+                          typeof details?.variableId === "string"
+                            ? details.variableId
+                            : null;
+                        const variableName =
+                          typeof details?.variableName === "string"
+                            ? details.variableName
+                            : null;
+                        const errorCode =
+                          typeof details?.errorCode === "string"
+                            ? details.errorCode
+                            : null;
+                        const isVariableMessage =
+                          m.code === "variable_static" ||
+                          m.code === "variable_resolved" ||
+                          m.code === "variable_resolve_failed";
+
+                        return (
+                          <div
+                            key={`${m.code}-${idx}`}
+                            className="text-[10px] text-muted-foreground flex items-center justify-between gap-2"
+                          >
+                            <div>
+                              [{m.severity}] {m.code}
+                              {errorCode ? ` (${errorCode})` : ""}: {m.message}
+                            </div>
+                            {isVariableMessage && variableId && (
+                              <Button
+                                asChild
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-[10px]"
+                              >
+                                <a
+                                  href={`/workbench/variables?varId=${encodeURIComponent(
+                                    variableId
+                                  )}`}
+                                >
+                                  定位变量
+                                  {variableName ? `：${variableName}` : ""}
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -368,10 +410,24 @@ export default function PreviewPanel() {
                         {seg.label}
                       </div>
                       {seg.missingVariables.length > 0 && (
-                        <div className="text-[10px] text-destructive">
+                        <div className="text-[10px] text-destructive flex items-center gap-2">
                           {t("preview.missingVariables", {
                             names: seg.missingVariables.join(", "),
                           })}
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                          >
+                            <a
+                              href={`/workbench/variables?varName=${encodeURIComponent(
+                                seg.missingVariables[0] ?? ""
+                              )}`}
+                            >
+                              去变量工作台
+                            </a>
+                          </Button>
                         </div>
                       )}
                     </div>

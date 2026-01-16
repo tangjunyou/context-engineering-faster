@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -146,6 +147,9 @@ export function SessionManagerDialog(props: {
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{t("sessions.title")}</DialogTitle>
+          <DialogDescription>
+            管理会话并追加消息，供 chat:// resolver 与预览/抽取器使用。
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-6">
@@ -160,6 +164,8 @@ export function SessionManagerDialog(props: {
                   onChange={e => setNewName(e.target.value)}
                   placeholder={t("sessions.namePlaceholder")}
                   className="h-9"
+                  name="sessionName"
+                  autoComplete="off"
                 />
                 <Button
                   onClick={() => void handleCreate()}
@@ -305,6 +311,7 @@ export function SessionManagerDialog(props: {
                 onChange={e => setContent(e.target.value)}
                 placeholder={t("sessions.messagePlaceholder")}
                 className="min-h-20"
+                name="sessionMessageContent"
               />
               <div className="flex justify-end">
                 <Button

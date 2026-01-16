@@ -5,6 +5,13 @@ services:
     environment:
       PORT: "3000"
       STATIC_DIR: "/app/public"
+      DATA_DIR: "/app/data"
+      DATA_KEY: "${DATA_KEY:?DATA_KEY required (base64 32 bytes)}"
       RUST_LOG: "server_rs=info,tower_http=info,axum=info"
+    volumes:
+      - app_data:/app/data
     ports:
       - "3000:3000"
+
+volumes:
+  app_data:

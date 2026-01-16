@@ -28,6 +28,8 @@ FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
 RUN useradd -r -u 10001 appuser
+
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
 USER appuser
 
 COPY --from=backend-builder /app/server-rs/target/release/server-rs /app/server-rs
@@ -35,6 +37,8 @@ COPY --from=frontend-builder /app/dist/public /app/public
 
 ENV PORT=3000
 ENV STATIC_DIR=/app/public
+ENV DATA_DIR=/app/data
 EXPOSE 3000
+VOLUME ["/app/data"]
 
 CMD ["/app/server-rs"]

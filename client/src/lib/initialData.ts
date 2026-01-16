@@ -13,7 +13,7 @@ export const initialVariables: Variable[] = [
   {
     id: "var_time",
     name: "current_time",
-    type: "dynamic",
+    type: "static",
     value: "2024-05-20 14:30:00",
     description: i18n.t("initialData.vars.timeDesc"),
     source: i18n.t("initialData.vars.systemClock"),
@@ -21,7 +21,7 @@ export const initialVariables: Variable[] = [
   {
     id: "var_user_name",
     name: "user_name",
-    type: "dynamic",
+    type: "static",
     value: "Alex",
     description: i18n.t("initialData.vars.userNameDesc"),
     source: i18n.t("initialData.vars.userProfile"),
@@ -29,7 +29,7 @@ export const initialVariables: Variable[] = [
   {
     id: "var_query",
     name: "user_query",
-    type: "dynamic",
+    type: "static",
     value: "帮我查一下最近的订单状态",
     description: i18n.t("initialData.vars.queryDesc"),
     source: i18n.t("initialData.vars.chatInterface"),
