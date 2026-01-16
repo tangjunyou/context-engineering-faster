@@ -121,11 +121,16 @@ fn build_app_with_state(
             "/datasources",
             get(list_datasources).post(create_datasource),
         )
-        .route("/datasources/local/sqlite", post(create_local_sqlite_datasource))
+        .route(
+            "/datasources/local/sqlite",
+            post(create_local_sqlite_datasource),
+        )
         .route("/providers", get(list_providers).post(create_provider))
         .route(
             "/providers/{id}",
-            get(get_provider).put(update_provider).delete(delete_provider),
+            get(get_provider)
+                .put(update_provider)
+                .delete(delete_provider),
         )
         .route("/providers/{id}/embeddings", post(call_provider_embeddings))
         .route(
@@ -133,10 +138,7 @@ fn build_app_with_state(
             post(call_provider_chat_completions),
         )
         .route("/datasets", get(list_datasets).post(create_dataset))
-        .route(
-            "/datasets/{id}",
-            get(get_dataset).delete(delete_dataset),
-        )
+        .route("/datasets/{id}", get(get_dataset).delete(delete_dataset))
         .route("/jobs", get(list_jobs))
         .route("/jobs/{id}", get(get_job))
         .route("/jobs/embed-to-vector", post(job_embed_to_vector))
@@ -179,7 +181,10 @@ fn build_app_with_state(
             "/sql/datasources/{id}/tables/{table}/rows/delete",
             post(delete_sqlite_table_row),
         )
-        .route("/sql/datasources/{id}/tables/create", post(create_sqlite_table))
+        .route(
+            "/sql/datasources/{id}/tables/create",
+            post(create_sqlite_table),
+        )
         .route("/sql/query", post(sql_query))
         .fallback(api_not_found)
         .layer(cors);
@@ -1002,16 +1007,15 @@ async fn call_provider_embeddings(
         )
             .into_response();
     }
-    let api_key = match decrypt_provider_api_key(&state, &id).await {
-        Ok(k) => k,
-        Err(err) => {
-            return (
+    let api_key =
+        match decrypt_provider_api_key(&state, &id).await {
+            Ok(k) => k,
+            Err(err) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
             )
-                .into_response()
-        }
-    };
+                .into_response(),
+        };
     let model = req
         .model
         .or(stored.default_embedding_model)
@@ -1023,22 +1027,21 @@ async fn call_provider_embeddings(
         "model": model,
         "input": req.input,
     });
-    let resp = match client
-        .post(url)
-        .bearer_auth(api_key)
-        .json(&body)
-        .send()
-        .await
-    {
-        Ok(r) => r,
-        Err(err) => {
-            return (
+    let resp =
+        match client
+            .post(url)
+            .bearer_auth(api_key)
+            .json(&body)
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(err) => return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": "request_failed", "message": err.to_string() })),
             )
-                .into_response()
-        }
-    };
+                .into_response(),
+        };
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
     if !status.is_success() {
@@ -1058,7 +1061,11 @@ async fn call_provider_embeddings(
                 .into_response();
         }
     };
-    let data = v.get("data").and_then(|d| d.as_array()).cloned().unwrap_or_default();
+    let data = v
+        .get("data")
+        .and_then(|d| d.as_array())
+        .cloned()
+        .unwrap_or_default();
     let mut embeddings = Vec::<Vec<f32>>::new();
     for item in data {
         let Some(arr) = item.get("embedding").and_then(|e| e.as_array()) else {
@@ -1070,7 +1077,11 @@ async fn call_provider_embeddings(
         }
         embeddings.push(vec);
     }
-    (StatusCode::OK, Json(serde_json::json!({ "embeddings": embeddings }))).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "embeddings": embeddings })),
+    )
+        .into_response()
 }
 
 #[derive(Deserialize)]
@@ -1110,41 +1121,42 @@ async fn call_provider_chat_completions(
         )
             .into_response();
     }
-    let api_key = match decrypt_provider_api_key(&state, &id).await {
-        Ok(k) => k,
-        Err(err) => {
-            return (
+    let api_key =
+        match decrypt_provider_api_key(&state, &id).await {
+            Ok(k) => k,
+            Err(err) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
             )
-                .into_response()
-        }
-    };
+                .into_response(),
+        };
     let model = req
         .model
         .or(stored.default_chat_model)
         .unwrap_or_else(|| "deepseek-ai/DeepSeek-V3".to_string());
 
-    let url = format!(
-        "{}/chat/completions",
-        stored.base_url.trim_end_matches('/')
-    );
+    let url = format!("{}/chat/completions", stored.base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
     let body = serde_json::json!({
         "model": model,
         "messages": req.messages,
         "stream": req.stream.unwrap_or(false),
     });
-    let resp = match client.post(url).bearer_auth(api_key).json(&body).send().await {
-        Ok(r) => r,
-        Err(err) => {
-            return (
+    let resp =
+        match client
+            .post(url)
+            .bearer_auth(api_key)
+            .json(&body)
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(err) => return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": "request_failed", "message": err.to_string() })),
             )
-                .into_response()
-        }
-    };
+                .into_response(),
+        };
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
     if !status.is_success() {
@@ -1514,7 +1526,10 @@ async fn job_embed_to_vector(
         let Some(obj) = row.as_object() else {
             continue;
         };
-        let idv = obj.get(&req.id_field).cloned().unwrap_or(serde_json::Value::Null);
+        let idv = obj
+            .get(&req.id_field)
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         let tv = obj
             .get(&req.text_field)
             .cloned()
@@ -1537,8 +1552,14 @@ async fn job_embed_to_vector(
                 payload.insert(k.clone(), v.clone());
             }
         }
-        payload.insert("_datasetId".to_string(), serde_json::Value::String(dataset.id.clone()));
-        payload.insert("_jobId".to_string(), serde_json::Value::String(job_id.clone()));
+        payload.insert(
+            "_datasetId".to_string(),
+            serde_json::Value::String(dataset.id.clone()),
+        );
+        payload.insert(
+            "_jobId".to_string(),
+            serde_json::Value::String(job_id.clone()),
+        );
         ids.push(id);
         texts.push(text);
         payloads.push(serde_json::Value::Object(payload));
@@ -1567,13 +1588,8 @@ async fn job_embed_to_vector(
             .into_response();
     }
 
-    let embeddings = match siliconflow_embeddings(
-        &provider.base_url,
-        &api_key,
-        &model,
-        &texts,
-    )
-    .await
+    let embeddings = match siliconflow_embeddings(&provider.base_url, &api_key, &model, &texts)
+        .await
     {
         Ok(v) => v,
         Err(err) => {
@@ -1654,7 +1670,12 @@ async fn siliconflow_embeddings(
         "model": model,
         "input": input,
     });
-    let resp = client.post(url).bearer_auth(api_key).json(&body).send().await?;
+    let resp = client
+        .post(url)
+        .bearer_auth(api_key)
+        .json(&body)
+        .send()
+        .await?;
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
     if !status.is_success() {
@@ -1699,7 +1720,9 @@ async fn vector_upsert_points_internal(
         anyhow::bail!("dimension_mismatch");
     }
     let points_path = base.join("points").join(format!("{collection}.jsonl"));
-    let existing = tokio::fs::read_to_string(&points_path).await.unwrap_or_default();
+    let existing = tokio::fs::read_to_string(&points_path)
+        .await
+        .unwrap_or_default();
     let mut map = HashMap::<String, VectorPoint>::new();
     for line in existing.lines() {
         if line.trim().is_empty() {
@@ -2088,7 +2111,9 @@ async fn list_sqlite_table_rows(
         Err(err) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "datasource_failed", "message": err.to_string() })),
+                Json(
+                    serde_json::json!({ "error": "datasource_failed", "message": err.to_string() }),
+                ),
             )
                 .into_response();
         }
@@ -2204,13 +2229,15 @@ async fn insert_sqlite_table_row(
         Err(err) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "datasource_failed", "message": err.to_string() })),
+                Json(
+                    serde_json::json!({ "error": "datasource_failed", "message": err.to_string() }),
+                ),
             )
                 .into_response();
         }
     };
 
-    use sqlx::{Connection, Executor};
+    use sqlx::Connection;
     let mut conn = match sqlx::SqliteConnection::connect(&url).await {
         Ok(c) => c,
         Err(err) => {
@@ -2324,13 +2351,15 @@ async fn delete_sqlite_table_row(
         Err(err) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "datasource_failed", "message": err.to_string() })),
+                Json(
+                    serde_json::json!({ "error": "datasource_failed", "message": err.to_string() }),
+                ),
             )
                 .into_response();
         }
     };
 
-    use sqlx::{Connection, Executor};
+    use sqlx::Connection;
     let mut conn = match sqlx::SqliteConnection::connect(&url).await {
         Ok(c) => c,
         Err(err) => {
@@ -2343,7 +2372,11 @@ async fn delete_sqlite_table_row(
     };
     let table_ident = quote_ident_sqlite(&table);
     let sql = format!("DELETE FROM {table_ident} WHERE rowid = ?");
-    match sqlx::query(sql.as_str()).bind(req.row_id).execute(&mut conn).await {
+    match sqlx::query(sql.as_str())
+        .bind(req.row_id)
+        .execute(&mut conn)
+        .await
+    {
         Ok(_) => {
             let _ = conn.close().await;
             (StatusCode::OK, Json(serde_json::json!({ "ok": true }))).into_response()
@@ -2430,7 +2463,9 @@ async fn create_sqlite_table(
     }) {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "validation_failed", "message": "invalid_data_type" })),
+            Json(
+                serde_json::json!({ "error": "validation_failed", "message": "invalid_data_type" }),
+            ),
         )
             .into_response();
     }
@@ -2440,7 +2475,9 @@ async fn create_sqlite_table(
         Err(err) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "datasource_failed", "message": err.to_string() })),
+                Json(
+                    serde_json::json!({ "error": "datasource_failed", "message": err.to_string() }),
+                ),
             )
                 .into_response();
         }
@@ -2487,6 +2524,8 @@ async fn create_sqlite_table(
 }
 
 fn sqlite_row_value_to_json(row: &sqlx::sqlite::SqliteRow, idx: usize) -> serde_json::Value {
+    use base64::engine::general_purpose::STANDARD;
+    use base64::Engine as _;
     use sqlx::{Row, ValueRef};
 
     let Ok(raw) = row.try_get_raw(idx) else {
@@ -2508,7 +2547,7 @@ fn sqlite_row_value_to_json(row: &sqlx::sqlite::SqliteRow, idx: usize) -> serde_
         return serde_json::Value::String(v);
     }
     if let Ok(v) = row.try_get::<Vec<u8>, _>(idx) {
-        return serde_json::Value::String(base64::encode(v));
+        return serde_json::Value::String(STANDARD.encode(v));
     }
 
     serde_json::Value::String("<unprintable>".to_string())
@@ -2573,7 +2612,9 @@ async fn create_vector_collection(
     if req.dimension == 0 || req.dimension > 4096 {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "validation_failed", "message": "invalid_dimension" })),
+            Json(
+                serde_json::json!({ "error": "validation_failed", "message": "invalid_dimension" }),
+            ),
         )
             .into_response();
     }
@@ -2708,7 +2749,9 @@ async fn upsert_vector_points(
     let points_path = base
         .join("points")
         .join(format!("{}.jsonl", req.collection));
-    let existing = tokio::fs::read_to_string(&points_path).await.unwrap_or_default();
+    let existing = tokio::fs::read_to_string(&points_path)
+        .await
+        .unwrap_or_default();
     let mut map = HashMap::<String, VectorPoint>::new();
     for line in existing.lines() {
         if line.trim().is_empty() {
@@ -2744,7 +2787,11 @@ async fn upsert_vector_points(
             .into_response();
     }
 
-    (StatusCode::OK, Json(serde_json::json!({ "upserted": map.len() }))).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "upserted": map.len() })),
+    )
+        .into_response()
 }
 
 #[derive(Deserialize)]
@@ -2831,7 +2878,9 @@ async fn search_vector(
     let points_path = base
         .join("points")
         .join(format!("{}.jsonl", req.collection));
-    let text = tokio::fs::read_to_string(&points_path).await.unwrap_or_default();
+    let text = tokio::fs::read_to_string(&points_path)
+        .await
+        .unwrap_or_default();
     let mut hits = Vec::<VectorSearchHit>::new();
     for line in text.lines() {
         if line.trim().is_empty() {
@@ -2850,7 +2899,11 @@ async fn search_vector(
             payload: p.payload,
         });
     }
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
     (StatusCode::OK, Json(serde_json::json!({ "hits": hits }))).into_response()
 }
@@ -2917,7 +2970,9 @@ async fn delete_vector_points(
     let points_path = base
         .join("points")
         .join(format!("{}.jsonl", req.collection));
-    let text = tokio::fs::read_to_string(&points_path).await.unwrap_or_default();
+    let text = tokio::fs::read_to_string(&points_path)
+        .await
+        .unwrap_or_default();
     let mut kept = Vec::<VectorPoint>::new();
     let mut deleted: u64 = 0;
     for line in text.lines() {
@@ -2957,7 +3012,11 @@ async fn delete_vector_points(
         )
             .into_response();
     }
-    (StatusCode::OK, Json(serde_json::json!({ "deleted": deleted }))).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "deleted": deleted })),
+    )
+        .into_response()
 }
 
 #[derive(Deserialize)]
@@ -3134,7 +3193,9 @@ async fn import_csv(
         Err(err) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "datasource_failed", "message": err.to_string() })),
+                Json(
+                    serde_json::json!({ "error": "datasource_failed", "message": err.to_string() }),
+                ),
             )
                 .into_response();
         }
@@ -3321,7 +3382,8 @@ async fn import_rows_postgres(
     use sqlx::{Connection, Executor};
     let mut conn = sqlx::PgConnection::connect(url).await?;
 
-    let table_ident = quote_qualified_table(table, quote_ident_pg).ok_or_else(|| anyhow::anyhow!("invalid_table"))?;
+    let table_ident = quote_qualified_table(table, quote_ident_pg)
+        .ok_or_else(|| anyhow::anyhow!("invalid_table"))?;
     let col_defs = cols
         .iter()
         .map(|c| format!("{} TEXT", quote_ident_pg(c)))
@@ -3367,7 +3429,8 @@ async fn import_rows_mysql(
     use sqlx::{Connection, Executor};
     let mut conn = sqlx::MySqlConnection::connect(url).await?;
 
-    let table_ident = quote_qualified_table(table, quote_ident_mysql).ok_or_else(|| anyhow::anyhow!("invalid_table"))?;
+    let table_ident = quote_qualified_table(table, quote_ident_mysql)
+        .ok_or_else(|| anyhow::anyhow!("invalid_table"))?;
     let col_defs = cols
         .iter()
         .map(|c| format!("{} TEXT", quote_ident_mysql(c)))

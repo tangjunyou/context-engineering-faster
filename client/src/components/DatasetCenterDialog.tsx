@@ -1,14 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { createDataset, deleteDataset, getDataset, listDatasets, type DatasetRecord, type DatasetSummary } from "@/lib/api/datasets";
+import {
+  createDataset,
+  deleteDataset,
+  getDataset,
+  listDatasets,
+  type DatasetRecord,
+  type DatasetSummary,
+} from "@/lib/api/datasets";
 import { embedToVectorJob } from "@/lib/api/jobs";
 
-export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function DatasetCenterDialog(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useTranslation();
   const { open, onOpenChange } = props;
 
@@ -60,7 +75,10 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
   const handleCreate = async () => {
     const name = window.prompt(t("datasetCenter.createPromptName"), "dataset");
     if (!name) return;
-    const text = window.prompt(t("datasetCenter.createPromptRows"), '[{"id":"1","text":"你好"}]');
+    const text = window.prompt(
+      t("datasetCenter.createPromptRows"),
+      '[{"id":"1","text":"你好"}]'
+    );
     if (!text) return;
     let rows: any[] = [];
     try {
@@ -72,7 +90,15 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
     try {
       const ds = await createDataset({ name, rows });
       toast.success(t("datasetCenter.created"));
-      setItems(prev => [{ id: ds.id, name: ds.name, rowCount: ds.rows.length, updatedAt: ds.updatedAt }, ...prev]);
+      setItems(prev => [
+        {
+          id: ds.id,
+          name: ds.name,
+          rowCount: ds.rows.length,
+          updatedAt: ds.updatedAt,
+        },
+        ...prev,
+      ]);
       setSelectedId(ds.id);
     } catch {
       toast.error(t("datasetCenter.createFailed"));
@@ -101,9 +127,15 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
     if (!collection) return;
     const idField = window.prompt(t("datasetCenter.embedPromptIdField"), "id");
     if (!idField) return;
-    const textField = window.prompt(t("datasetCenter.embedPromptTextField"), "text");
+    const textField = window.prompt(
+      t("datasetCenter.embedPromptTextField"),
+      "text"
+    );
     if (!textField) return;
-    const payloadFieldsText = window.prompt(t("datasetCenter.embedPromptPayloadFields"), '["title","tag"]');
+    const payloadFieldsText = window.prompt(
+      t("datasetCenter.embedPromptPayloadFields"),
+      '["title","tag"]'
+    );
     let payloadFields: string[] | undefined;
     if (payloadFieldsText) {
       try {
@@ -145,10 +177,19 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
                 className="h-9"
               />
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => void handleCreate()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleCreate()}
+                >
                   {t("datasetCenter.create")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void refresh()}
+                  disabled={loading}
+                >
                   {t("datasetCenter.refresh")}
                 </Button>
               </div>
@@ -158,7 +199,9 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
               <div className="p-2 space-y-2">
                 {filtered.length === 0 ? (
                   <div className="text-xs text-muted-foreground p-2">
-                    {loading ? t("datasetCenter.loading") : t("datasetCenter.empty")}
+                    {loading
+                      ? t("datasetCenter.loading")
+                      : t("datasetCenter.empty")}
                   </div>
                 ) : (
                   filtered.map(ds => (
@@ -167,12 +210,20 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
                       type="button"
                       onClick={() => setSelectedId(ds.id)}
                       className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                        selectedId === ds.id ? "bg-muted" : "bg-background/50 hover:bg-muted/50"
+                        selectedId === ds.id
+                          ? "bg-muted"
+                          : "bg-background/50 hover:bg-muted/50"
                       }`}
                     >
-                      <div className="text-sm font-medium truncate">{ds.name}</div>
-                      <div className="text-[11px] text-muted-foreground font-mono truncate">{ds.id}</div>
-                      <div className="text-[11px] text-muted-foreground">{t("datasetCenter.rows", { n: ds.rowCount })}</div>
+                      <div className="text-sm font-medium truncate">
+                        {ds.name}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-mono truncate">
+                        {ds.id}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {t("datasetCenter.rows", { n: ds.rowCount })}
+                      </div>
                     </button>
                   ))
                 )}
@@ -182,19 +233,37 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">{t("datasetCenter.detail")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("datasetCenter.detail")}
+              </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => void handleEmbedToVector()} disabled={!selectedId}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleEmbedToVector()}
+                  disabled={!selectedId}
+                >
                   {t("datasetCenter.embedToVector")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void handleDelete()} disabled={!selectedId}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleDelete()}
+                  disabled={!selectedId}
+                >
                   {t("datasetCenter.delete")}
                 </Button>
               </div>
             </div>
             <div className="rounded-md border border-border bg-background/50 p-3">
               <pre className="text-[11px] leading-5 overflow-auto max-h-[420px]">
-                {selected ? JSON.stringify({ ...selected, rows: selected.rows.slice(0, 20) }, null, 2) : t("datasetCenter.noSelection")}
+                {selected
+                  ? JSON.stringify(
+                      { ...selected, rows: selected.rows.slice(0, 20) },
+                      null,
+                      2
+                    )
+                  : t("datasetCenter.noSelection")}
               </pre>
             </div>
           </div>
@@ -203,4 +272,3 @@ export function DatasetCenterDialog(props: { open: boolean; onOpenChange: (open:
     </Dialog>
   );
 }
-

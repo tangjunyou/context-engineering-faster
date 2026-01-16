@@ -100,7 +100,8 @@ export async function listSqliteTableRows(input: {
     window.location.origin
   );
   if (input.limit != null) url.searchParams.set("limit", String(input.limit));
-  if (input.offset != null) url.searchParams.set("offset", String(input.offset));
+  if (input.offset != null)
+    url.searchParams.set("offset", String(input.offset));
   return requestJson<{ rows: SqliteRow[] }>(url.pathname + url.search);
 }
 

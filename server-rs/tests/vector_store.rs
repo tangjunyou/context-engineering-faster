@@ -107,4 +107,3 @@ async fn vector_collections_upsert_search_delete_work() {
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(json["deleted"], 2);
 }
-

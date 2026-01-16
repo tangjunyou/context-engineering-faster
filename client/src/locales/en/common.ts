@@ -108,7 +108,8 @@ const common = {
     hint: "Controlled import: creates a table (TEXT columns) and inserts rows.",
     table: "Target table",
     header: "First row is header",
-    headerHint: "When enabled, uses the first row as column names (a-zA-Z0-9_ only)",
+    headerHint:
+      "When enabled, uses the first row as column names (a-zA-Z0-9_ only)",
     file: "Select CSV file",
     cancel: "Cancel",
     import: "Import",

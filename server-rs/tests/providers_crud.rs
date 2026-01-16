@@ -46,7 +46,13 @@ async fn provider_crud_redacts_api_key() {
 
     let response = app
         .clone()
-        .oneshot(Request::builder().method("GET").uri("/api/providers").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/providers")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
@@ -56,4 +62,3 @@ async fn provider_crud_redacts_api_key() {
     assert!(items.iter().any(|x| x["id"] == id));
     assert!(items.iter().all(|x| x.get("apiKey").is_none()));
 }
-

@@ -36,4 +36,3 @@ export async function embedToVectorJob(input: {
     body: JSON.stringify(input),
   });
 }
-

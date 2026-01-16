@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { importCsvToSqliteDataSource } from "@/lib/api/imports";
@@ -27,7 +32,10 @@ export function ImportCsvDialog(props: {
     setIsImporting(false);
   }, [open]);
 
-  const canImport = useMemo(() => Boolean(file) && table.trim().length > 0, [file, table]);
+  const canImport = useMemo(
+    () => Boolean(file) && table.trim().length > 0,
+    [file, table]
+  );
 
   const handleImport = async () => {
     if (!file) return;
@@ -58,17 +66,25 @@ export function ImportCsvDialog(props: {
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="text-xs text-muted-foreground">{t("imports.hint")}</div>
+          <div className="text-xs text-muted-foreground">
+            {t("imports.hint")}
+          </div>
 
           <div className="space-y-1">
             <div className="text-xs">{t("imports.table")}</div>
-            <Input value={table} onChange={e => setTable(e.target.value)} className="h-9" />
+            <Input
+              value={table}
+              onChange={e => setTable(e.target.value)}
+              className="h-9"
+            />
           </div>
 
           <div className="flex items-center justify-between rounded-md border border-border p-3">
             <div>
               <div className="text-sm">{t("imports.header")}</div>
-              <div className="text-xs text-muted-foreground">{t("imports.headerHint")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("imports.headerHint")}
+              </div>
             </div>
             <Switch checked={header} onCheckedChange={setHeader} />
           </div>
@@ -87,7 +103,10 @@ export function ImportCsvDialog(props: {
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t("imports.cancel")}
             </Button>
-            <Button onClick={() => void handleImport()} disabled={!canImport || isImporting}>
+            <Button
+              onClick={() => void handleImport()}
+              disabled={!canImport || isImporting}
+            >
               {isImporting ? t("imports.importing") : t("imports.import")}
             </Button>
           </div>
@@ -96,4 +115,3 @@ export function ImportCsvDialog(props: {
     </Dialog>
   );
 }
-

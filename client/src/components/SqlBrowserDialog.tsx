@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { shallow } from "zustand/shallow";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,7 +138,11 @@ export function SqlBrowserDialog(props: Props) {
     if (!table) return;
     const colsText = window.prompt(
       t("sqlBrowser.createTableColumnsPrompt"),
-      JSON.stringify([{ name: "id", dataType: "INTEGER", nullable: false }], null, 2)
+      JSON.stringify(
+        [{ name: "id", dataType: "INTEGER", nullable: false }],
+        null,
+        2
+      )
     );
     if (!colsText) return;
     let cols: { name: string; dataType: string; nullable?: boolean }[] = [];
@@ -176,7 +185,10 @@ export function SqlBrowserDialog(props: Props) {
 
   const handleInsertRow = async () => {
     if (!selectedTable) return;
-    const text = window.prompt(t("sqlBrowser.insertRowPrompt"), "{\"name\":\"Alice\"}");
+    const text = window.prompt(
+      t("sqlBrowser.insertRowPrompt"),
+      '{"name":"Alice"}'
+    );
     if (!text) return;
     let row: Record<string, unknown>;
     try {
@@ -230,7 +242,9 @@ export function SqlBrowserDialog(props: Props) {
     if (attachToSelectedNode && selectedNodeId) {
       const current = nodes.find(n => n.id === selectedNodeId);
       const currentVars = current?.data?.variables ?? [];
-      const nextVars = currentVars.includes(v.id) ? currentVars : [...currentVars, v.id];
+      const nextVars = currentVars.includes(v.id)
+        ? currentVars
+        : [...currentVars, v.id];
       updateNodeData(selectedNodeId, {
         variables: nextVars,
       });
@@ -242,13 +256,21 @@ export function SqlBrowserDialog(props: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>{t("sqlBrowser.title", { name: dataSourceName })}</DialogTitle>
+          <DialogTitle>
+            {t("sqlBrowser.title", { name: dataSourceName })}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-1 space-y-2">
-            <div className="text-xs text-muted-foreground">{t("sqlBrowser.tables")}</div>
-            <Button size="sm" variant="outline" onClick={() => void handleCreateTable()}>
+            <div className="text-xs text-muted-foreground">
+              {t("sqlBrowser.tables")}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleCreateTable()}
+            >
               {t("sqlBrowser.createTable")}
             </Button>
             <Input
@@ -261,7 +283,9 @@ export function SqlBrowserDialog(props: Props) {
               <div className="p-2 space-y-1">
                 {filteredTables.length === 0 ? (
                   <div className="text-xs text-muted-foreground p-2">
-                    {isLoading ? t("sqlBrowser.loading") : t("sqlBrowser.emptyTables")}
+                    {isLoading
+                      ? t("sqlBrowser.loading")
+                      : t("sqlBrowser.emptyTables")}
                   </div>
                 ) : (
                   filteredTables.map(tn => (
@@ -270,7 +294,9 @@ export function SqlBrowserDialog(props: Props) {
                       type="button"
                       onClick={() => setSelectedTable(tn)}
                       className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                        selectedTable === tn ? "bg-muted" : "bg-background/50 hover:bg-muted/50"
+                        selectedTable === tn
+                          ? "bg-muted"
+                          : "bg-background/50 hover:bg-muted/50"
                       }`}
                     >
                       <div className="text-sm font-medium truncate">{tn}</div>
@@ -291,11 +317,15 @@ export function SqlBrowserDialog(props: Props) {
                   value={String(rowLimit)}
                   onChange={e => {
                     const n = Number(e.target.value);
-                    if (Number.isFinite(n)) setRowLimit(Math.max(1, Math.min(1000, n)));
+                    if (Number.isFinite(n))
+                      setRowLimit(Math.max(1, Math.min(1000, n)));
                   }}
                   className="h-9 w-24 font-mono"
                 />
-                <Button onClick={() => void handleRun()} disabled={runningQuery || !query.trim()}>
+                <Button
+                  onClick={() => void handleRun()}
+                  disabled={runningQuery || !query.trim()}
+                >
                   {runningQuery ? t("sqlBrowser.running") : t("sqlBrowser.run")}
                 </Button>
               </div>
@@ -305,12 +335,16 @@ export function SqlBrowserDialog(props: Props) {
               {selectedTable ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">{t("sqlBrowser.columnList")}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t("sqlBrowser.columnList")}
+                    </div>
                     <ScrollArea className="h-[120px] rounded-md border border-border">
                       <div className="p-2 space-y-1">
                         {columns.length === 0 ? (
                           <div className="text-xs text-muted-foreground p-2">
-                            {isLoading ? t("sqlBrowser.loading") : t("sqlBrowser.emptyColumns")}
+                            {isLoading
+                              ? t("sqlBrowser.loading")
+                              : t("sqlBrowser.emptyColumns")}
                           </div>
                         ) : (
                           columns.map(c => (
@@ -318,7 +352,9 @@ export function SqlBrowserDialog(props: Props) {
                               key={c.name}
                               className="flex items-center justify-between rounded border border-border px-2 py-1 bg-background/50"
                             >
-                              <div className="text-xs font-mono truncate">{c.name}</div>
+                              <div className="text-xs font-mono truncate">
+                                {c.name}
+                              </div>
                               <div className="text-[11px] text-muted-foreground truncate">
                                 {c.dataType}
                               </div>
@@ -330,7 +366,9 @@ export function SqlBrowserDialog(props: Props) {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">{t("sqlBrowser.variable")}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t("sqlBrowser.variable")}
+                    </div>
                     <Input
                       value={varName}
                       onChange={e => setVarName(e.target.value)}
@@ -368,7 +406,9 @@ export function SqlBrowserDialog(props: Props) {
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">{t("sqlBrowser.query")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("sqlBrowser.query")}
+              </div>
               <Textarea
                 value={query}
                 onChange={e => setQuery(e.target.value)}
@@ -381,19 +421,29 @@ export function SqlBrowserDialog(props: Props) {
                     onClick={() => void handleLoadRows()}
                     disabled={loadingRows}
                   >
-                    {loadingRows ? t("sqlBrowser.loading") : t("sqlBrowser.loadRows")}
+                    {loadingRows
+                      ? t("sqlBrowser.loading")
+                      : t("sqlBrowser.loadRows")}
                   </Button>
-                  <Button variant="outline" onClick={() => void handleInsertRow()}>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleInsertRow()}
+                  >
                     {t("sqlBrowser.insertRow")}
                   </Button>
-                  <Button variant="outline" onClick={() => void handleDeleteRow()}>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleDeleteRow()}
+                  >
                     {t("sqlBrowser.deleteRow")}
                   </Button>
                 </div>
               )}
               {tableRows && (
                 <div className="rounded-md border border-border p-3">
-                  <div className="text-xs text-muted-foreground">{t("sqlBrowser.tableRows")}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("sqlBrowser.tableRows")}
+                  </div>
                   <pre className="mt-2 text-[11px] leading-5 overflow-auto max-h-40">
                     {JSON.stringify(tableRows, null, 2)}
                   </pre>
@@ -402,11 +452,17 @@ export function SqlBrowserDialog(props: Props) {
               {queryResult && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-md border border-border p-3">
-                    <div className="text-xs text-muted-foreground">{t("sqlBrowser.value")}</div>
-                    <div className="mt-1 font-mono text-sm break-all">{queryResult.value}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t("sqlBrowser.value")}
+                    </div>
+                    <div className="mt-1 font-mono text-sm break-all">
+                      {queryResult.value}
+                    </div>
                   </div>
                   <div className="rounded-md border border-border p-3">
-                    <div className="text-xs text-muted-foreground">{t("sqlBrowser.rows")}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t("sqlBrowser.rows")}
+                    </div>
                     <pre className="mt-2 text-[11px] leading-5 overflow-auto max-h-40">
                       {JSON.stringify(queryResult.rows, null, 2)}
                     </pre>

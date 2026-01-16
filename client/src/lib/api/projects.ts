@@ -49,4 +49,3 @@ export async function upsertProject(
     body: JSON.stringify(input),
   });
 }
-

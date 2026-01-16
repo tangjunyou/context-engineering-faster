@@ -27,7 +27,9 @@ export async function listSessions(): Promise<SessionSummary[]> {
   return requestJson<SessionSummary[]>("/api/sessions");
 }
 
-export async function createSession(input: { name: string }): Promise<SessionDoc> {
+export async function createSession(input: {
+  name: string;
+}): Promise<SessionDoc> {
   return requestJson<SessionDoc>("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

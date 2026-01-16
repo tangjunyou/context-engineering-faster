@@ -57,4 +57,3 @@ async fn list_sessions_returns_summary_without_messages() {
     assert!(item.get("updatedAt").is_some());
     assert!(item.get("messages").is_none());
 }
-

@@ -11,7 +11,12 @@ import {
   type SessionSummary,
 } from "@/lib/api/sessions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,8 +33,12 @@ export function SessionManagerDialog(props: {
   const [isAppending, setIsAppending] = useState(false);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [selectedSession, setSelectedSession] = useState<SessionDoc | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    null
+  );
+  const [selectedSession, setSelectedSession] = useState<SessionDoc | null>(
+    null
+  );
 
   const [newName, setNewName] = useState("");
   const [role, setRole] = useState<SessionMessage["role"]>("user");
@@ -42,7 +51,9 @@ export function SessionManagerDialog(props: {
       .then(list => {
         setSessions(list);
         if (selectedSessionId) return;
-        const first = list.slice().sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt))[0];
+        const first = list
+          .slice()
+          .sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt))[0];
         if (first) setSelectedSessionId(first.id);
       })
       .catch(() => toast.error(t("sessions.loadFailed")))
@@ -63,7 +74,10 @@ export function SessionManagerDialog(props: {
   }, [open, selectedSessionId, t]);
 
   const sortedSessions = useMemo(
-    () => sessions.slice().sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt)),
+    () =>
+      sessions
+        .slice()
+        .sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt)),
     [sessions]
   );
 
@@ -137,7 +151,9 @@ export function SessionManagerDialog(props: {
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-3">
             <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">{t("sessions.new")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("sessions.new")}
+              </div>
               <div className="flex items-center gap-2">
                 <Input
                   value={newName}
@@ -145,10 +161,18 @@ export function SessionManagerDialog(props: {
                   placeholder={t("sessions.namePlaceholder")}
                   className="h-9"
                 />
-                <Button onClick={() => void handleCreate()} disabled={isCreating}>
+                <Button
+                  onClick={() => void handleCreate()}
+                  disabled={isCreating}
+                >
                   {isCreating ? t("sessions.creating") : t("sessions.create")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void refreshList()} disabled={isLoading}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void refreshList()}
+                  disabled={isLoading}
+                >
                   {t("sessions.refresh")}
                 </Button>
               </div>
@@ -172,7 +196,9 @@ export function SessionManagerDialog(props: {
                           : "bg-background/50 hover:bg-muted/50"
                       }`}
                     >
-                      <div className="text-sm font-medium truncate">{s.name}</div>
+                      <div className="text-sm font-medium truncate">
+                        {s.name}
+                      </div>
                       <div className="text-[11px] text-muted-foreground font-mono truncate">
                         {s.id}
                       </div>
@@ -185,7 +211,9 @@ export function SessionManagerDialog(props: {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">{t("sessions.detail")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("sessions.detail")}
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
@@ -226,16 +254,23 @@ export function SessionManagerDialog(props: {
               <div className="p-3 space-y-2">
                 {selectedSession?.messages?.length ? (
                   selectedSession.messages.map((m, idx) => (
-                    <div key={`${m.createdAt}_${idx}`} className="rounded-md border border-border p-2">
+                    <div
+                      key={`${m.createdAt}_${idx}`}
+                      className="rounded-md border border-border p-2"
+                    >
                       <div className="text-[11px] text-muted-foreground font-mono">
                         {m.role} · {m.createdAt}
                       </div>
-                      <div className="text-sm whitespace-pre-wrap">{m.content}</div>
+                      <div className="text-sm whitespace-pre-wrap">
+                        {m.content}
+                      </div>
                     </div>
                   ))
                 ) : (
                   <div className="text-xs text-muted-foreground">
-                    {selectedSession ? t("sessions.noMessages") : t("sessions.noSelection")}
+                    {selectedSession
+                      ? t("sessions.noMessages")
+                      : t("sessions.noSelection")}
                   </div>
                 )}
               </div>
@@ -286,4 +321,3 @@ export function SessionManagerDialog(props: {
     </Dialog>
   );
 }
-

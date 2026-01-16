@@ -37,4 +37,3 @@ export async function getDataset(id: string): Promise<DatasetRecord> {
 export async function deleteDataset(id: string): Promise<void> {
   await requestJson<null>(`/api/datasets/${id}`, { method: "DELETE" });
 }
-

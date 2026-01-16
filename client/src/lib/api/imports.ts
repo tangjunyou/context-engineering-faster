@@ -24,7 +24,10 @@ export async function importCsvToSqlDataSource(input: {
   header: boolean;
   file: File;
 }): Promise<ImportCsvResult> {
-  const url = new URL(`/api/datasources/${input.dataSourceId}/import/csv`, window.location.origin);
+  const url = new URL(
+    `/api/datasources/${input.dataSourceId}/import/csv`,
+    window.location.origin
+  );
   url.searchParams.set("table", input.table);
   url.searchParams.set("header", input.header ? "true" : "false");
 

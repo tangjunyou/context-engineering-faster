@@ -52,14 +52,13 @@ export async function searchVector(input: {
   topK?: number;
   filter?: VectorFilter;
 }): Promise<{ hits: { id: string; score: number; payload: unknown }[] }> {
-  return requestJson<{ hits: { id: string; score: number; payload: unknown }[] }>(
-    "/api/vector/search",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    }
-  );
+  return requestJson<{
+    hits: { id: string; score: number; payload: unknown }[];
+  }>("/api/vector/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 }
 
 export async function deleteVectorPoints(input: {
@@ -73,4 +72,3 @@ export async function deleteVectorPoints(input: {
     body: JSON.stringify(input),
   });
 }
-

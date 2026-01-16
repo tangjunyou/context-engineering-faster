@@ -1,13 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { getImportJob, listImportJobs, type ImportJobRecord, type ImportJobSummary } from "@/lib/api/imports";
+import {
+  getImportJob,
+  listImportJobs,
+  type ImportJobRecord,
+  type ImportJobSummary,
+} from "@/lib/api/imports";
 
-export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ImportHistoryDialog(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useTranslation();
   const { open, onOpenChange } = props;
 
@@ -82,7 +95,12 @@ export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open:
                 placeholder={t("importHistory.search")}
                 className="h-9"
               />
-              <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void refresh()}
+                disabled={loading}
+              >
                 {t("importHistory.refresh")}
               </Button>
             </div>
@@ -91,7 +109,9 @@ export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open:
               <div className="p-2 space-y-2">
                 {filtered.length === 0 ? (
                   <div className="text-xs text-muted-foreground p-2">
-                    {loading ? t("importHistory.loading") : t("importHistory.empty")}
+                    {loading
+                      ? t("importHistory.loading")
+                      : t("importHistory.empty")}
                   </div>
                 ) : (
                   filtered.map(job => (
@@ -100,18 +120,25 @@ export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open:
                       type="button"
                       onClick={() => setSelectedId(job.id)}
                       className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                        selectedId === job.id ? "bg-muted" : "bg-background/50 hover:bg-muted/50"
+                        selectedId === job.id
+                          ? "bg-muted"
+                          : "bg-background/50 hover:bg-muted/50"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium truncate">{job.table}</div>
-                        <div className="text-xs text-muted-foreground font-mono">{job.status}</div>
+                        <div className="text-sm font-medium truncate">
+                          {job.table}
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {job.status}
+                        </div>
                       </div>
                       <div className="text-[11px] text-muted-foreground font-mono truncate">
                         {job.id}
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {job.driver} · {job.dataSourceId} · {job.insertedRows ?? "-"}
+                        {job.driver} · {job.dataSourceId} ·{" "}
+                        {job.insertedRows ?? "-"}
                       </div>
                     </button>
                   ))
@@ -121,11 +148,15 @@ export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open:
           </div>
 
           <div className="space-y-3">
-            <div className="text-xs text-muted-foreground">{t("importHistory.detail")}</div>
+            <div className="text-xs text-muted-foreground">
+              {t("importHistory.detail")}
+            </div>
             {selected ? (
               <div className="rounded-md border border-border bg-background/50 p-4 space-y-2">
                 <div className="text-sm font-medium">{selected.table}</div>
-                <div className="text-[11px] text-muted-foreground font-mono break-all">{selected.id}</div>
+                <div className="text-[11px] text-muted-foreground font-mono break-all">
+                  {selected.id}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {t("importHistory.meta", {
                     driver: selected.driver,
@@ -143,7 +174,9 @@ export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open:
                 )}
               </div>
             ) : (
-              <div className="text-xs text-muted-foreground">{t("importHistory.noSelection")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("importHistory.noSelection")}
+              </div>
             )}
           </div>
         </div>
@@ -151,4 +184,3 @@ export function ImportHistoryDialog(props: { open: boolean; onOpenChange: (open:
     </Dialog>
   );
 }
-

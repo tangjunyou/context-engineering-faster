@@ -34,7 +34,10 @@ type RFState = {
   updateVariable: (variable: Variable) => void;
   addVariable: (variable: Variable) => void;
   deleteVariable: (id: string) => void;
-  setProjectMeta: (input: { projectId: string | null; projectName: string }) => void;
+  setProjectMeta: (input: {
+    projectId: string | null;
+    projectName: string;
+  }) => void;
   loadProjectState: (input: {
     projectId: string | null;
     projectName: string;

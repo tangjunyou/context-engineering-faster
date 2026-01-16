@@ -55,11 +55,14 @@ export async function providerEmbeddings(input: {
   model?: string;
   input: string[];
 }): Promise<{ embeddings: number[][] }> {
-  return requestJson<{ embeddings: number[][] }>(`/api/providers/${input.providerId}/embeddings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: input.model, input: input.input }),
-  });
+  return requestJson<{ embeddings: number[][] }>(
+    `/api/providers/${input.providerId}/embeddings`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: input.model, input: input.input }),
+    }
+  );
 }
 
 export async function providerChatCompletions(input: {
@@ -72,8 +75,11 @@ export async function providerChatCompletions(input: {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: input.model, messages: input.messages, stream: false }),
+      body: JSON.stringify({
+        model: input.model,
+        messages: input.messages,
+        stream: false,
+      }),
     }
   );
 }
-

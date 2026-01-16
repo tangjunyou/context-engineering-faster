@@ -123,7 +123,8 @@ const common = {
     tables: "表",
     createTable: "建表",
     createTablePrompt: "请输入表名（仅字母/数字/下划线）",
-    createTableColumnsPrompt: "请输入列定义 JSON（例如：[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"nullable\":false}])",
+    createTableColumnsPrompt:
+      '请输入列定义 JSON（例如：[{"name":"id","dataType":"INTEGER","nullable":false}])',
     invalidJson: "JSON 无效",
     invalidNumber: "数字无效",
     tableCreated: "建表成功",

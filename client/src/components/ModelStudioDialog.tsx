@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -14,7 +19,10 @@ import {
   type Provider,
 } from "@/lib/api/providers";
 
-export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ModelStudioDialog(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { t } = useTranslation();
   const { open, onOpenChange } = props;
 
@@ -45,17 +53,25 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
   }, [open]);
 
   const filtered = items.filter(p =>
-    `${p.name} ${p.provider} ${p.baseUrl}`.toLowerCase().includes(filter.trim().toLowerCase())
+    `${p.name} ${p.provider} ${p.baseUrl}`
+      .toLowerCase()
+      .includes(filter.trim().toLowerCase())
   );
 
   const selected = items.find(p => p.id === selectedId) ?? null;
 
   const handleCreateSiliconFlow = async () => {
-    const name = window.prompt(t("modelStudio.createPromptName"), "siliconflow");
+    const name = window.prompt(
+      t("modelStudio.createPromptName"),
+      "siliconflow"
+    );
     if (!name) return;
     const apiKey = window.prompt(t("modelStudio.createPromptApiKey"));
     if (!apiKey) return;
-    const baseUrl = window.prompt(t("modelStudio.createPromptBaseUrl"), "https://api.siliconflow.cn/v1");
+    const baseUrl = window.prompt(
+      t("modelStudio.createPromptBaseUrl"),
+      "https://api.siliconflow.cn/v1"
+    );
     if (!baseUrl) return;
     const chatModel = window.prompt(
       t("modelStudio.createPromptChatModel"),
@@ -98,10 +114,16 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
 
   const handleTestEmbeddings = async () => {
     if (!selected) return;
-    const text = window.prompt(t("modelStudio.testEmbeddingPrompt"), "你好，世界");
+    const text = window.prompt(
+      t("modelStudio.testEmbeddingPrompt"),
+      "你好，世界"
+    );
     if (!text) return;
     try {
-      const res = await providerEmbeddings({ providerId: selected.id, input: [text] });
+      const res = await providerEmbeddings({
+        providerId: selected.id,
+        input: [text],
+      });
       setResult(res);
       toast.success(t("modelStudio.testOk"));
     } catch {
@@ -112,12 +134,17 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
 
   const handleTestChat = async () => {
     if (!selected) return;
-    const text = window.prompt(t("modelStudio.testChatPrompt"), "用一句话解释向量数据库是什么");
+    const text = window.prompt(
+      t("modelStudio.testChatPrompt"),
+      "用一句话解释向量数据库是什么"
+    );
     if (!text) return;
     try {
       const res = await providerChatCompletions({
         providerId: selected.id,
-        messages: [{ role: "user", content: text, createdAt: String(Date.now()) }],
+        messages: [
+          { role: "user", content: text, createdAt: String(Date.now()) },
+        ],
       });
       setResult(res);
       toast.success(t("modelStudio.testOk"));
@@ -137,8 +164,14 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-1 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">{t("modelStudio.providers")}</div>
-              <Button size="sm" variant="outline" onClick={() => void handleCreateSiliconFlow()}>
+              <div className="text-xs text-muted-foreground">
+                {t("modelStudio.providers")}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleCreateSiliconFlow()}
+              >
                 {t("modelStudio.create")}
               </Button>
             </div>
@@ -152,7 +185,9 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
               <div className="p-2 space-y-1">
                 {filtered.length === 0 ? (
                   <div className="text-xs text-muted-foreground p-2">
-                    {loading ? t("modelStudio.loading") : t("modelStudio.empty")}
+                    {loading
+                      ? t("modelStudio.loading")
+                      : t("modelStudio.empty")}
                   </div>
                 ) : (
                   filtered.map(p => (
@@ -161,11 +196,17 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
                       type="button"
                       onClick={() => setSelectedId(p.id)}
                       className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                        selectedId === p.id ? "bg-muted" : "bg-background/50 hover:bg-muted/50"
+                        selectedId === p.id
+                          ? "bg-muted"
+                          : "bg-background/50 hover:bg-muted/50"
                       }`}
                     >
-                      <div className="text-sm font-medium truncate">{p.name}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{p.provider}</div>
+                      <div className="text-sm font-medium truncate">
+                        {p.name}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {p.provider}
+                      </div>
                       <div className="text-[11px] text-muted-foreground font-mono truncate">
                         {p.baseUrl}
                       </div>
@@ -174,35 +215,58 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
                 )}
               </div>
             </ScrollArea>
-            <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void refresh()}
+              disabled={loading}
+            >
               {t("modelStudio.refresh")}
             </Button>
           </div>
 
           <div className="col-span-2 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">{t("modelStudio.actions")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("modelStudio.actions")}
+              </div>
               <div className="text-xs text-muted-foreground font-mono">
                 {selected?.id ?? "-"}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => void handleTestEmbeddings()} disabled={!selected}>
+              <Button
+                variant="outline"
+                onClick={() => void handleTestEmbeddings()}
+                disabled={!selected}
+              >
                 {t("modelStudio.testEmbedding")}
               </Button>
-              <Button variant="outline" onClick={() => void handleTestChat()} disabled={!selected}>
+              <Button
+                variant="outline"
+                onClick={() => void handleTestChat()}
+                disabled={!selected}
+              >
                 {t("modelStudio.testChat")}
               </Button>
-              <Button variant="outline" onClick={() => void handleDelete()} disabled={!selected}>
+              <Button
+                variant="outline"
+                onClick={() => void handleDelete()}
+                disabled={!selected}
+              >
                 {t("modelStudio.delete")}
               </Button>
             </div>
 
             <div className="rounded-md border border-border p-3">
-              <div className="text-xs text-muted-foreground">{t("modelStudio.result")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("modelStudio.result")}
+              </div>
               <pre className="mt-2 text-[11px] leading-5 overflow-auto max-h-[360px]">
-                {result ? JSON.stringify(result, null, 2) : t("modelStudio.noResult")}
+                {result
+                  ? JSON.stringify(result, null, 2)
+                  : t("modelStudio.noResult")}
               </pre>
             </div>
           </div>
@@ -211,4 +275,3 @@ export function ModelStudioDialog(props: { open: boolean; onOpenChange: (open: b
     </Dialog>
   );
 }
-

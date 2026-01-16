@@ -68,8 +68,17 @@ async fn project_create_list_get_and_upsert_roundtrip() {
     assert_eq!(response.status(), StatusCode::OK);
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let list: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    assert!(list.as_array().unwrap().iter().any(|p| p["id"] == project_id));
-    let first = list.as_array().unwrap().iter().find(|p| p["id"] == project_id).unwrap();
+    assert!(list
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["id"] == project_id));
+    let first = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["id"] == project_id)
+        .unwrap();
     assert!(first.get("updatedAt").is_some());
     assert!(first.get("state").is_none());
 
@@ -118,4 +127,3 @@ async fn project_create_list_get_and_upsert_roundtrip() {
     assert_eq!(updated["name"], "p1-updated");
     assert_eq!(updated["state"]["nodes"].as_array().unwrap().len(), 0);
 }
-

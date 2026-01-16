@@ -53,7 +53,9 @@ async fn imports_csv_into_sqlite_when_enabled() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/datasources/{id}/import/csv?table=people&header=true"))
+                .uri(format!(
+                    "/api/datasources/{id}/import/csv?table=people&header=true"
+                ))
                 .header("content-type", "text/csv")
                 .body(Body::from(csv.as_slice()))
                 .unwrap(),
@@ -152,7 +154,9 @@ async fn import_is_forbidden_when_disabled() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/datasources/{id}/import/csv?table=people&header=true"))
+                .uri(format!(
+                    "/api/datasources/{id}/import/csv?table=people&header=true"
+                ))
                 .header("content-type", "text/csv")
                 .body(Body::from(csv.as_slice()))
                 .unwrap(),

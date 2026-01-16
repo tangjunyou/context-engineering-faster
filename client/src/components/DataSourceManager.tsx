@@ -201,19 +201,39 @@ export default function DataSourceManager() {
           {t("dataSourceManager.title")}
         </h2>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => void handleCreateLocalSqlite()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void handleCreateLocalSqlite()}
+          >
             {t("dataSourceManager.createLocalSqlite")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setVectorStudioOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setVectorStudioOpen(true)}
+          >
             {t("vectorStudio.open")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setModelStudioOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setModelStudioOpen(true)}
+          >
             {t("modelStudio.open")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setDatasetCenterOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDatasetCenterOpen(true)}
+          >
             {t("datasetCenter.open")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setJobCenterOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setJobCenterOpen(true)}
+          >
             {t("jobCenter.open")}
           </Button>
           <Button
@@ -231,10 +251,22 @@ export default function DataSourceManager() {
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          <VectorStudioDialog open={vectorStudioOpen} onOpenChange={setVectorStudioOpen} />
-          <ModelStudioDialog open={modelStudioOpen} onOpenChange={setModelStudioOpen} />
-          <DatasetCenterDialog open={datasetCenterOpen} onOpenChange={setDatasetCenterOpen} />
-          <JobCenterDialog open={jobCenterOpen} onOpenChange={setJobCenterOpen} />
+          <VectorStudioDialog
+            open={vectorStudioOpen}
+            onOpenChange={setVectorStudioOpen}
+          />
+          <ModelStudioDialog
+            open={modelStudioOpen}
+            onOpenChange={setModelStudioOpen}
+          />
+          <DatasetCenterDialog
+            open={datasetCenterOpen}
+            onOpenChange={setDatasetCenterOpen}
+          />
+          <JobCenterDialog
+            open={jobCenterOpen}
+            onOpenChange={setJobCenterOpen}
+          />
           <ImportHistoryDialog
             open={importHistoryOpen}
             onOpenChange={setImportHistoryOpen}
@@ -367,7 +399,9 @@ export default function DataSourceManager() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setBrowseSqlFor({ id: ds.id, name: ds.name })}
+                        onClick={() =>
+                          setBrowseSqlFor({ id: ds.id, name: ds.name })
+                        }
                       >
                         {t("sqlBrowser.open")}
                       </Button>
@@ -440,16 +474,16 @@ export default function DataSourceManager() {
                   ds.driver === "postgres" ||
                   ds.driver === "mysql") &&
                   Boolean(ds.allowImport) && (
-                  <div className="mt-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setImportForId(ds.id)}
-                    >
-                      {t("imports.open")}
-                    </Button>
-                  </div>
-                )}
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setImportForId(ds.id)}
+                      >
+                        {t("imports.open")}
+                      </Button>
+                    </div>
+                  )}
               </div>
             ))}
             {!items.length && !loading && (

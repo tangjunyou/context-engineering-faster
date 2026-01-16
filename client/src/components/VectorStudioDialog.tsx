@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -121,7 +126,11 @@ export function VectorStudioDialog(props: {
     }
     const filterText = window.prompt(
       t("vectorStudio.searchPromptFilter"),
-      JSON.stringify({ must: [{ key: "tag", match: { value: "demo" } }] }, null, 2)
+      JSON.stringify(
+        { must: [{ key: "tag", match: { value: "demo" } }] },
+        null,
+        2
+      )
     );
     let filterObj: VectorFilter | undefined;
     if (filterText) {
@@ -151,7 +160,11 @@ export function VectorStudioDialog(props: {
     if (!selected) return;
     const filterText = window.prompt(
       t("vectorStudio.deletePrompt"),
-      JSON.stringify({ must: [{ key: "tag", match: { value: "demo" } }] }, null, 2)
+      JSON.stringify(
+        { must: [{ key: "tag", match: { value: "demo" } }] },
+        null,
+        2
+      )
     );
     if (!filterText) return;
     let filterObj: VectorFilter;
@@ -162,7 +175,10 @@ export function VectorStudioDialog(props: {
       return;
     }
     try {
-      const res = await deleteVectorPoints({ collection: selected, filter: filterObj });
+      const res = await deleteVectorPoints({
+        collection: selected,
+        filter: filterObj,
+      });
       toast.success(t("vectorStudio.deleted", { n: res.deleted }));
     } catch {
       toast.error(t("vectorStudio.deleteFailed"));
@@ -179,8 +195,14 @@ export function VectorStudioDialog(props: {
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-1 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">{t("vectorStudio.collections")}</div>
-              <Button size="sm" variant="outline" onClick={() => void handleCreate()}>
+              <div className="text-xs text-muted-foreground">
+                {t("vectorStudio.collections")}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleCreate()}
+              >
                 {t("vectorStudio.create")}
               </Button>
             </div>
@@ -194,7 +216,9 @@ export function VectorStudioDialog(props: {
               <div className="p-2 space-y-1">
                 {filtered.length === 0 ? (
                   <div className="text-xs text-muted-foreground p-2">
-                    {loading ? t("vectorStudio.loading") : t("vectorStudio.empty")}
+                    {loading
+                      ? t("vectorStudio.loading")
+                      : t("vectorStudio.empty")}
                   </div>
                 ) : (
                   filtered.map(c => (
@@ -203,10 +227,14 @@ export function VectorStudioDialog(props: {
                       type="button"
                       onClick={() => setSelected(c.name)}
                       className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                        selected === c.name ? "bg-muted" : "bg-background/50 hover:bg-muted/50"
+                        selected === c.name
+                          ? "bg-muted"
+                          : "bg-background/50 hover:bg-muted/50"
                       }`}
                     >
-                      <div className="text-sm font-medium truncate">{c.name}</div>
+                      <div className="text-sm font-medium truncate">
+                        {c.name}
+                      </div>
                       <div className="text-[11px] text-muted-foreground font-mono truncate">
                         {c.dimension} · {c.distance}
                       </div>
@@ -215,35 +243,58 @@ export function VectorStudioDialog(props: {
                 )}
               </div>
             </ScrollArea>
-            <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void refresh()}
+              disabled={loading}
+            >
               {t("vectorStudio.refresh")}
             </Button>
           </div>
 
           <div className="col-span-2 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">{t("vectorStudio.actions")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("vectorStudio.actions")}
+              </div>
               <div className="text-xs text-muted-foreground font-mono">
                 {selected ?? "-"}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => void handleUpsert()} disabled={!selected}>
+              <Button
+                variant="outline"
+                onClick={() => void handleUpsert()}
+                disabled={!selected}
+              >
                 {t("vectorStudio.upsert")}
               </Button>
-              <Button variant="outline" onClick={() => void handleSearch()} disabled={!selected}>
+              <Button
+                variant="outline"
+                onClick={() => void handleSearch()}
+                disabled={!selected}
+              >
                 {t("vectorStudio.search")}
               </Button>
-              <Button variant="outline" onClick={() => void handleDelete()} disabled={!selected}>
+              <Button
+                variant="outline"
+                onClick={() => void handleDelete()}
+                disabled={!selected}
+              >
                 {t("vectorStudio.delete")}
               </Button>
             </div>
 
             <div className="rounded-md border border-border p-3">
-              <div className="text-xs text-muted-foreground">{t("vectorStudio.result")}</div>
+              <div className="text-xs text-muted-foreground">
+                {t("vectorStudio.result")}
+              </div>
               <pre className="mt-2 text-[11px] leading-5 overflow-auto max-h-[360px]">
-                {searchResult ? JSON.stringify(searchResult, null, 2) : t("vectorStudio.noResult")}
+                {searchResult
+                  ? JSON.stringify(searchResult, null, 2)
+                  : t("vectorStudio.noResult")}
               </pre>
             </div>
           </div>
@@ -252,4 +303,3 @@ export function VectorStudioDialog(props: {
     </Dialog>
   );
 }
-
