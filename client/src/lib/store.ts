@@ -19,6 +19,8 @@ import type {
 } from "./types";
 
 type RFState = {
+  projectId: string | null;
+  projectName: string;
   nodes: ContextFlowNode[];
   edges: ContextFlowEdge[];
   variables: Variable[];
@@ -32,9 +34,19 @@ type RFState = {
   updateVariable: (variable: Variable) => void;
   addVariable: (variable: Variable) => void;
   deleteVariable: (id: string) => void;
+  setProjectMeta: (input: { projectId: string | null; projectName: string }) => void;
+  loadProjectState: (input: {
+    projectId: string | null;
+    projectName: string;
+    nodes: ContextFlowNode[];
+    edges: ContextFlowEdge[];
+    variables: Variable[];
+  }) => void;
 };
 
 export const useStore = createWithEqualityFn<RFState>()((set, get) => ({
+  projectId: null,
+  projectName: "Customer Service Agent",
   nodes: initialNodes,
   edges: initialEdges,
   variables: initialVariables,
@@ -87,6 +99,19 @@ export const useStore = createWithEqualityFn<RFState>()((set, get) => ({
   deleteVariable: (id: string) => {
     set({
       variables: get().variables.filter(v => v.id !== id),
+    });
+  },
+  setProjectMeta: input => {
+    set({ projectId: input.projectId, projectName: input.projectName });
+  },
+  loadProjectState: input => {
+    set({
+      projectId: input.projectId,
+      projectName: input.projectName,
+      nodes: input.nodes,
+      edges: input.edges,
+      variables: input.variables,
+      selectedNodeId: null,
     });
   },
 }));

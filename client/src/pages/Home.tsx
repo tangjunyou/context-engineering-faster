@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { BrainCircuit, Layers, Box, Database, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shallow } from "zustand/shallow";
+import { ProjectManagerDialog } from "@/components/ProjectManagerDialog";
+import { SessionManagerDialog } from "@/components/SessionManagerDialog";
 
 const nodeTypes = {
   contextNode: ContextNode,
@@ -32,6 +34,7 @@ const nodeTypes = {
 export default function Home() {
   const { t, i18n } = useTranslation();
   const {
+    projectName,
     nodes,
     edges,
     onNodesChange,
@@ -41,6 +44,7 @@ export default function Home() {
     addNode,
   } = useStore(
     state => ({
+      projectName: state.projectName,
       nodes: state.nodes,
       edges: state.edges,
       onNodesChange: state.onNodesChange,
@@ -58,7 +62,8 @@ export default function Home() {
   const [activeRightPanel, setActiveRightPanel] = useState<
     "properties" | "preview"
   >("preview");
-  const projectName = "Customer Service Agent";
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
 
   const handleNodeClick = (_: React.MouseEvent, node: ContextFlowNode) => {
     selectNode(node.id);
@@ -100,6 +105,23 @@ export default function Home() {
           <span>{t("app.projectLabel", { name: projectName })}</span>
           <div className="h-4 w-[1px] bg-border"></div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => setProjectDialogOpen(true)}
+            >
+              {t("projects.manage")}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={() => setSessionDialogOpen(true)}
+            >
+              {t("sessions.manage")}
+            </Button>
+          </div>
+          <div className="h-4 w-[1px] bg-border"></div>
+          <div className="flex items-center gap-2">
             <span>{t("nav.language")}:</span>
             <Button
               variant="ghost"
@@ -123,6 +145,14 @@ export default function Home() {
 
       {/* Main Workspace */}
       <div className="flex-1 overflow-hidden">
+        <ProjectManagerDialog
+          open={projectDialogOpen}
+          onOpenChange={setProjectDialogOpen}
+        />
+        <SessionManagerDialog
+          open={sessionDialogOpen}
+          onOpenChange={setSessionDialogOpen}
+        />
         <ResizablePanelGroup direction="horizontal">
           {/* Left Sidebar */}
           <ResizablePanel
