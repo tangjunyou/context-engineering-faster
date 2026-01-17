@@ -341,7 +341,22 @@ fn cors_from_env() -> CorsLayer {
 }
 
 async fn healthz() -> impl IntoResponse {
-    (StatusCode::OK, Json(serde_json::json!({ "status": "ok" })))
+    let data_dir = data_dir_from_env();
+    let data_key = match crypto::load_or_init_data_key(&data_dir) {
+        Ok((_k, source)) => serde_json::json!({
+            "configured": true,
+            "source": match source {
+                crypto::DataKeySource::Env => "env",
+                crypto::DataKeySource::File => "file",
+                crypto::DataKeySource::Generated => "generated",
+            }
+        }),
+        Err(err) => serde_json::json!({ "configured": false, "error": err.to_string() }),
+    };
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({ "status": "ok", "dataKey": data_key })),
+    )
 }
 
 async fn api_not_found(method: Method, uri: Uri) -> impl IntoResponse {
@@ -566,8 +581,8 @@ async fn create_datasource(
     State(state): State<AppState>,
     Json(req): Json<DataSourceCreateRequest>,
 ) -> axum::response::Response {
-    let key = match crypto::load_data_key_from_env() {
-        Ok(k) => k,
+    let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+        Ok(v) => v,
         Err(err) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -663,8 +678,8 @@ async fn create_local_sqlite_datasource(
     State(state): State<AppState>,
     Json(req): Json<LocalSqliteCreateRequest>,
 ) -> axum::response::Response {
-    let key = match crypto::load_data_key_from_env() {
-        Ok(k) => k,
+    let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+        Ok(v) => v,
         Err(err) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -859,8 +874,8 @@ async fn create_provider(
             .into_response();
     }
 
-    let key = match crypto::load_data_key_from_env() {
-        Ok(k) => k,
+    let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+        Ok(v) => v,
         Err(err) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -973,8 +988,8 @@ async fn update_provider(
         .or(stored.default_embedding_model);
 
     if let Some(api_key) = req.api_key {
-        let key = match crypto::load_data_key_from_env() {
-            Ok(k) => k,
+        let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+            Ok(v) => v,
             Err(err) => {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -1037,7 +1052,7 @@ async fn delete_provider(
 }
 
 async fn decrypt_provider_api_key(state: &AppState, id: &str) -> anyhow::Result<String> {
-    let key = crypto::load_data_key_from_env()?;
+    let (key, _source) = crypto::load_or_init_data_key(&state.data_dir)?;
     let stored = load_provider(state, id).await?;
     let bytes = crypto::decrypt_from_base64(&key, &stored.api_key_enc)?;
     Ok(String::from_utf8(bytes)?)
@@ -1941,8 +1956,8 @@ async fn update_datasource(
                 )
                     .into_response();
             };
-            let key = match crypto::load_data_key_from_env() {
-                Ok(k) => k,
+            let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+                Ok(v) => v,
                 Err(err) => {
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -1978,8 +1993,8 @@ async fn update_datasource(
                 )
                     .into_response();
             };
-            let key = match crypto::load_data_key_from_env() {
-                Ok(k) => k,
+            let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+                Ok(v) => v,
                 Err(err) => {
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -2006,8 +2021,8 @@ async fn update_datasource(
             stored.url_enc = url_enc;
         }
     } else if let Some(url) = url {
-        let key = match crypto::load_data_key_from_env() {
-            Ok(k) => k,
+        let (key, _source) = match crypto::load_or_init_data_key(&state.data_dir) {
+            Ok(v) => v,
             Err(err) => {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -3478,7 +3493,7 @@ async fn list_tables_for_url(url: &str) -> anyhow::Result<Vec<String>> {
 }
 
 async fn decrypt_datasource_url(state: &AppState, id: &str) -> anyhow::Result<String> {
-    let key = crypto::load_data_key_from_env()?;
+    let (key, _source) = crypto::load_or_init_data_key(&state.data_dir)?;
     let stored = load_datasource(state, id).await?;
     let bytes = crypto::decrypt_from_base64(&key, &stored.url_enc)?;
     Ok(String::from_utf8(bytes)?)
@@ -3493,7 +3508,7 @@ struct Neo4jConfig {
 }
 
 async fn decrypt_neo4j_config(state: &AppState, id: &str) -> anyhow::Result<Neo4jConfig> {
-    let key = crypto::load_data_key_from_env()?;
+    let (key, _source) = crypto::load_or_init_data_key(&state.data_dir)?;
     let stored = load_datasource(state, id).await?;
     let bytes = crypto::decrypt_from_base64(&key, &stored.url_enc)?;
     let text = String::from_utf8(bytes)?;
@@ -3508,7 +3523,7 @@ struct MilvusConfig {
 }
 
 async fn decrypt_milvus_config(state: &AppState, id: &str) -> anyhow::Result<MilvusConfig> {
-    let key = crypto::load_data_key_from_env()?;
+    let (key, _source) = crypto::load_or_init_data_key(&state.data_dir)?;
     let stored = load_datasource(state, id).await?;
     let bytes = crypto::decrypt_from_base64(&key, &stored.url_enc)?;
     let text = String::from_utf8(bytes)?;

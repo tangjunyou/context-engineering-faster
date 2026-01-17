@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +18,7 @@ import { JobCenterDialog } from "@/components/JobCenterDialog";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -71,6 +72,8 @@ export default function DataSourceManager() {
     resolver: zodResolver(schema),
     defaultValues: { name: "", driver: "sqlite", url: "", allowImport: false },
   });
+
+  const driver = form.watch("driver");
 
   const refresh = async () => {
     setLoading(true);
@@ -196,56 +199,62 @@ export default function DataSourceManager() {
 
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h2 className="font-mono font-bold text-sm uppercase tracking-wider">
+      <div className="p-4 border-b border-border flex items-center justify-between gap-4">
+        <h2 className="font-mono font-bold text-sm uppercase tracking-wider shrink-0">
           {t("dataSourceManager.title")}
         </h2>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void handleCreateLocalSqlite()}
-          >
-            {t("dataSourceManager.createLocalSqlite")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setVectorStudioOpen(true)}
-          >
-            {t("vectorStudio.open")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setModelStudioOpen(true)}
-          >
-            {t("modelStudio.open")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setDatasetCenterOpen(true)}
-          >
-            {t("datasetCenter.open")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setJobCenterOpen(true)}
-          >
-            {t("jobCenter.open")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setImportHistoryOpen(true)}
-          >
-            {t("importHistory.open")}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => void refresh()}>
-            {t("dataSourceManager.refresh")}
-          </Button>
+        
+        <div className="w-full overflow-hidden">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex w-max space-x-2 pb-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleCreateLocalSqlite()}
+              >
+                {t("dataSourceManager.createLocalSqlite")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setVectorStudioOpen(true)}
+              >
+                {t("vectorStudio.open")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setModelStudioOpen(true)}
+              >
+                {t("modelStudio.open")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setDatasetCenterOpen(true)}
+              >
+                {t("datasetCenter.open")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setJobCenterOpen(true)}
+              >
+                {t("jobCenter.open")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setImportHistoryOpen(true)}
+              >
+                {t("importHistory.open")}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void refresh()}>
+                {t("dataSourceManager.refresh")}
+              </Button>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </div>
       </div>
 
@@ -349,8 +358,18 @@ export default function DataSourceManager() {
                         {...field}
                         className="h-8 font-mono text-xs"
                         autoComplete="off"
+                        placeholder={
+                          driver === "sqlite"
+                            ? "data.db"
+                            : "postgres://user:pass@localhost:5432/db"
+                        }
                       />
                     </FormControl>
+                    <FormDescription className="text-[10px]">
+                      {driver === "sqlite"
+                        ? t("dataSourceManager.urlHintSqlite")
+                        : t("dataSourceManager.urlHintSql")}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
