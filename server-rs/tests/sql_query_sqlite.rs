@@ -10,6 +10,8 @@ use tower::ServiceExt as _;
 async fn sql_query_returns_first_cell_value_for_sqlite() {
     use sqlx::{Connection, Executor};
 
+    std::env::set_var("ALLOW_SQL_DIRECT_URL", "1");
+
     let dir = tempdir().unwrap();
     std::fs::write(dir.path().join("index.html"), "INDEX").unwrap();
 

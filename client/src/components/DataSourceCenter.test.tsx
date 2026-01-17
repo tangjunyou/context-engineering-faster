@@ -10,6 +10,60 @@ const apiSpies = vi.hoisted(() => ({
   testDataSource: vi.fn(async () => ({ ok: true })),
   updateDataSource: vi.fn(),
   listMilvusCollections: vi.fn(),
+  getDataSourceCapabilities: vi.fn(async ({ dataSourceId }: any) => {
+    if (dataSourceId === "ds_sqlite") {
+      return {
+        id: dataSourceId,
+        driver: "sqlite",
+        resolver: `sql://${dataSourceId}`,
+        allowImport: true,
+        allowWrite: true,
+        allowSchema: true,
+        allowDelete: true,
+        supportsTables: true,
+        supportsColumns: true,
+        supportsSqlQuery: true,
+        supportsCsvImport: true,
+        supportsSqliteRowsApi: true,
+        supportsMilvusCollections: false,
+        supportsMilvusOps: false,
+      };
+    }
+    if (dataSourceId === "ds_milvus") {
+      return {
+        id: dataSourceId,
+        driver: "milvus",
+        resolver: `milvus://${dataSourceId}`,
+        allowImport: false,
+        allowWrite: false,
+        allowSchema: false,
+        allowDelete: false,
+        supportsTables: false,
+        supportsColumns: false,
+        supportsSqlQuery: false,
+        supportsCsvImport: false,
+        supportsSqliteRowsApi: false,
+        supportsMilvusCollections: true,
+        supportsMilvusOps: true,
+      };
+    }
+    return {
+      id: dataSourceId,
+      driver: "unknown",
+      resolver: `sql://${dataSourceId}`,
+      allowImport: false,
+      allowWrite: false,
+      allowSchema: false,
+      allowDelete: false,
+      supportsTables: false,
+      supportsColumns: false,
+      supportsSqlQuery: false,
+      supportsCsvImport: false,
+      supportsSqliteRowsApi: false,
+      supportsMilvusCollections: false,
+      supportsMilvusOps: false,
+    };
+  }),
   listDataSourceTables: vi.fn(async () => ({ tables: ["items"] })),
   previewTableRows: vi.fn(),
   milvusInsert: vi.fn(),

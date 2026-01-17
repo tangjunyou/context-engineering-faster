@@ -26,7 +26,10 @@ async fn imports_csv_into_sqlite_when_enabled() {
         "name": "sqlite-import",
         "driver": "sqlite",
         "url": url,
-        "allowImport": true
+        "allowImport": true,
+        "allowWrite": false,
+        "allowSchema": true,
+        "allowDelete": false
     })
     .to_string();
 

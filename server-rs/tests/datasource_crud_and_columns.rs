@@ -36,7 +36,11 @@ async fn datasource_supports_update_delete_and_column_introspection() {
     let body = serde_json::json!({
         "name": "sqlite-demo",
         "driver": "sqlite",
-        "url": url
+        "url": url,
+        "allowImport": false,
+        "allowWrite": false,
+        "allowSchema": true,
+        "allowDelete": false
     })
     .to_string();
 

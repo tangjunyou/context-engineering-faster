@@ -134,8 +134,11 @@ async fn datasource_capabilities_contract_is_stable_for_sqlite_and_milvus() {
     assert_eq!(json["supportsSqlQuery"], false);
     assert_eq!(json["supportsCsvImport"], false);
     assert_eq!(json["supportsSqliteRowsApi"], false);
-    assert_eq!(json["supportsMilvusCollections"], true);
-    assert_eq!(json["supportsMilvusOps"], true);
+    assert_eq!(
+        json["supportsMilvusCollections"],
+        cfg!(feature = "milvus") && true
+    );
+    assert_eq!(json["supportsMilvusOps"], cfg!(feature = "milvus") && true);
 }
 
 fn sqlite_url(path: &std::path::Path) -> String {

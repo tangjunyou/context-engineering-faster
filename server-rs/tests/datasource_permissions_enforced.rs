@@ -7,7 +7,7 @@ use tempfile::tempdir;
 use tower::ServiceExt as _;
 
 #[tokio::test]
-async fn previews_rows_from_sqlite_table_with_limit() {
+async fn datasource_allow_schema_is_enforced_for_sql_read_endpoints() {
     use sqlx::{Connection, Executor};
 
     std::env::set_var("DATA_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
@@ -18,7 +18,7 @@ async fn previews_rows_from_sqlite_table_with_limit() {
     std::fs::create_dir_all(&static_dir).unwrap();
     std::fs::write(static_dir.join("index.html"), "INDEX").unwrap();
 
-    let db_path = dir.path().join("preview.db");
+    let db_path = dir.path().join("perm.db");
     std::fs::File::create(&db_path).unwrap();
     let url = sqlite_url(&db_path);
 
@@ -29,26 +29,17 @@ async fn previews_rows_from_sqlite_table_with_limit() {
     conn.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)")
         .await
         .unwrap();
-    conn.execute("INSERT INTO items (id, name) VALUES (1, 'Alice')")
-        .await
-        .unwrap();
-    conn.execute("INSERT INTO items (id, name) VALUES (2, 'Bob')")
-        .await
-        .unwrap();
-    conn.execute("INSERT INTO items (id, name) VALUES (3, 'Carol')")
-        .await
-        .unwrap();
     conn.close().await.unwrap();
 
     let app = server_rs::build_app_with_data_dir(static_dir, data_dir);
 
     let body = serde_json::json!({
-        "name": "sqlite-preview",
+        "name": "sqlite-perm",
         "driver": "sqlite",
         "url": url,
         "allowImport": false,
         "allowWrite": false,
-        "allowSchema": true,
+        "allowSchema": false,
         "allowDelete": false
     })
     .to_string();
@@ -67,30 +58,45 @@ async fn previews_rows_from_sqlite_table_with_limit() {
     assert_eq!(response.status(), StatusCode::CREATED);
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    let id = json["id"].as_str().unwrap().to_string();
+    let ds_id = json["id"].as_str().unwrap().to_string();
 
     let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(format!(
-                    "/api/datasources/{id}/tables/items/preview?limit=2"
-                ))
+                .uri(format!("/api/datasources/{ds_id}/tables"))
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    let rows = json["rows"].as_array().unwrap();
-    assert_eq!(rows.len(), 2);
-    assert!(rows[0].get("id").is_some());
-    assert!(rows[0].get("name").is_some());
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/sql/query")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "dataSourceId": ds_id,
+                        "query": "SELECT 1 AS value",
+                        "rowLimit": 1
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
 fn sqlite_url(path: &std::path::Path) -> String {
     let p = path.to_string_lossy().replace('\\', "/");
     format!("sqlite:///{p}")
 }
+
