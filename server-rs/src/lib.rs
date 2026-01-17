@@ -3312,7 +3312,11 @@ async fn list_milvus_collections(
             .into_response();
     }
     if !ds.allow_schema.unwrap_or(true) {
-        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
 
     let cfg = match decrypt_milvus_config(&state, &id).await {
@@ -3548,7 +3552,11 @@ async fn milvus_search_entities(
             .into_response();
     }
     if !ds.allow_schema.unwrap_or(true) {
-        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
     let cfg = match decrypt_milvus_config(&state, &id).await {
         Ok(v) => v,
@@ -3613,7 +3621,11 @@ async fn milvus_query_entities(
             .into_response();
     }
     if !ds.allow_schema.unwrap_or(true) {
-        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
     let cfg = match decrypt_milvus_config(&state, &id).await {
         Ok(v) => v,
@@ -3676,7 +3688,11 @@ async fn list_datasource_tables(
             .into_response();
     }
     if !stored.allow_schema.unwrap_or(true) {
-        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
 
     let url = match decrypt_datasource_url(&state, &id).await {
@@ -3736,7 +3752,11 @@ async fn list_datasource_table_columns(
             .into_response();
     }
     if !stored.allow_schema.unwrap_or(true) {
-        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
 
     if !is_safe_table_name(&table) {
@@ -3807,7 +3827,11 @@ async fn preview_datasource_table_rows(
             .into_response();
     }
     if !stored.allow_schema.unwrap_or(true) {
-        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
     if !is_safe_table_name(&table) {
         return (
@@ -3847,7 +3871,12 @@ fn is_sql_driver(driver: &str) -> bool {
 fn env_flag_enabled(key: &str) -> bool {
     std::env::var(key)
         .ok()
-        .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "YES" | "on" | "ON"))
+        .map(|v| {
+            matches!(
+                v.as_str(),
+                "1" | "true" | "TRUE" | "yes" | "YES" | "on" | "ON"
+            )
+        })
         .unwrap_or(false)
 }
 
@@ -3870,7 +3899,11 @@ fn is_readonly_sql(query: &str) -> bool {
     !forbidden.iter().any(|kw| lower.contains(kw))
 }
 
-fn json_error(status: StatusCode, error: &str, message: impl Into<String>) -> axum::response::Response {
+fn json_error(
+    status: StatusCode,
+    error: &str,
+    message: impl Into<String>,
+) -> axum::response::Response {
     (
         status,
         Json(serde_json::json!({ "error": error, "message": message.into() })),
@@ -4623,7 +4656,11 @@ async fn sql_query(
 ) -> axum::response::Response {
     let query = req.query.trim();
     if !is_readonly_sql(query) {
-        return json_error(StatusCode::BAD_REQUEST, "readonly_required", "仅允许只读 SELECT/WITH 查询");
+        return json_error(
+            StatusCode::BAD_REQUEST,
+            "readonly_required",
+            "仅允许只读 SELECT/WITH 查询",
+        );
     }
 
     let limit = req.row_limit.unwrap_or(100).min(1000) as i64;
@@ -4631,14 +4668,22 @@ async fn sql_query(
         let ds = match load_datasource(&state, &id).await {
             Ok(ds) => ds,
             Err(err) => {
-                return json_error(StatusCode::BAD_REQUEST, "datasource_failed", err.to_string());
+                return json_error(
+                    StatusCode::BAD_REQUEST,
+                    "datasource_failed",
+                    err.to_string(),
+                );
             }
         };
         if !is_sql_driver(&ds.driver) {
             return json_error(StatusCode::BAD_REQUEST, "unsupported_driver", ds.driver);
         }
         if !ds.allow_schema.unwrap_or(true) {
-            return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：结构/读取能力已关闭");
+            return json_error(
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "未授权：结构/读取能力已关闭",
+            );
         }
         match decrypt_datasource_url(&state, &id).await {
             Ok(url) => url,
@@ -4648,7 +4693,11 @@ async fn sql_query(
         }
     } else if let Some(url) = req.url {
         if !env_flag_enabled("ALLOW_SQL_DIRECT_URL") {
-            return json_error(StatusCode::FORBIDDEN, "forbidden", "已禁用：直连 URL 查询（请使用 dataSourceId）");
+            return json_error(
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "已禁用：直连 URL 查询（请使用 dataSourceId）",
+            );
         }
         url
     } else {

@@ -79,7 +79,8 @@ const common = {
     new: "新建数据源",
     refresh: "刷新",
     openCenter: "打开数据源中心",
-    openCenterHint: "数据源创建/管理/浏览已收敛到“数据源中心”，配方页仅保留快捷入口。",
+    openCenterHint:
+      "数据源创建/管理/浏览已收敛到“数据源中心”，配方页仅保留快捷入口。",
     stepLabel: "步骤 {{step}} / {{total}}",
     stepBack: "上一步",
     stepNext: "下一步",

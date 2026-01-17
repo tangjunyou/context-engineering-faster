@@ -106,9 +106,9 @@ export default function DataSourceCenter() {
   const [items, setItems] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedCaps, setSelectedCaps] = useState<
-    Awaited<ReturnType<typeof getDataSourceCapabilities>> | null
-  >(null);
+  const [selectedCaps, setSelectedCaps] = useState<Awaited<
+    ReturnType<typeof getDataSourceCapabilities>
+  > | null>(null);
   const [capsLoading, setCapsLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [importForId, setImportForId] = useState<string | null>(null);
@@ -148,9 +148,8 @@ export default function DataSourceCenter() {
   );
   const [milvusBuilderTopK, setMilvusBuilderTopK] = useState("10");
   const [milvusBuilderFilter, setMilvusBuilderFilter] = useState("");
-  const [milvusBuilderOutputFields, setMilvusBuilderOutputFields] = useState(
-    ""
-  );
+  const [milvusBuilderOutputFields, setMilvusBuilderOutputFields] =
+    useState("");
   const [milvusBodyText, setMilvusBodyText] = useState("{}");
   const [milvusRunLoading, setMilvusRunLoading] = useState(false);
   const [milvusRunResult, setMilvusRunResult] = useState<unknown>(null);
@@ -311,9 +310,16 @@ export default function DataSourceCenter() {
       caps.push({ key: "write", label: "写入", enabled: allowWrite });
       caps.push({ key: "delete", label: "删除", enabled: allowDelete });
       if (selectedCaps.supportsSqliteRowsApi) {
-        caps.push({ key: "sqliteRows", label: "SQLite 行级操作", enabled: allowWrite });
+        caps.push({
+          key: "sqliteRows",
+          label: "SQLite 行级操作",
+          enabled: allowWrite,
+        });
       }
-    } else if (selectedCaps.supportsMilvusCollections || selectedCaps.supportsMilvusOps) {
+    } else if (
+      selectedCaps.supportsMilvusCollections ||
+      selectedCaps.supportsMilvusOps
+    ) {
       caps.push({
         key: "collections",
         label: "Collections",
@@ -720,13 +726,15 @@ export default function DataSourceCenter() {
                         {isSqlDriver(selected.driver) &&
                           !selectedCaps.allowSchema && (
                             <div>
-                              结构/读取能力已关闭：请在 Permissions 打开「{t("dataSourceManager.allowSchema")}」
+                              结构/读取能力已关闭：请在 Permissions 打开「
+                              {t("dataSourceManager.allowSchema")}」
                             </div>
                           )}
                         {isSqlDriver(selected.driver) &&
                           !selectedCaps.allowImport && (
                             <div>
-                              CSV 导入已关闭：请在 Permissions 打开「{t("dataSourceManager.allowImport")}」
+                              CSV 导入已关闭：请在 Permissions 打开「
+                              {t("dataSourceManager.allowImport")}」
                             </div>
                           )}
                         {selected.driver === "milvus" &&
@@ -739,14 +747,16 @@ export default function DataSourceCenter() {
                           selectedCaps.supportsMilvusOps &&
                           !selectedCaps.allowSchema && (
                             <div>
-                              Milvus 读取能力已关闭：search/query 需要「{t("dataSourceManager.allowSchema")}」
+                              Milvus 读取能力已关闭：search/query 需要「
+                              {t("dataSourceManager.allowSchema")}」
                             </div>
                           )}
                         {selected.driver === "milvus" &&
                           selectedCaps.supportsMilvusOps &&
                           !selectedCaps.allowWrite && (
                             <div>
-                              Milvus 写入能力已关闭：insert 需要「{t("dataSourceManager.allowWrite")}」
+                              Milvus 写入能力已关闭：insert 需要「
+                              {t("dataSourceManager.allowWrite")}」
                             </div>
                           )}
                       </div>
@@ -1128,10 +1138,7 @@ export default function DataSourceCenter() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {milvusCollections.collections.map(name => (
-                                    <SelectItem
-                                      key={name}
-                                      value={name}
-                                    >
+                                    <SelectItem key={name} value={name}>
                                       {name}
                                     </SelectItem>
                                   ))}
@@ -1154,7 +1161,9 @@ export default function DataSourceCenter() {
                             </div>
                             <Input
                               value={milvusBuilderTopK}
-                              onChange={e => setMilvusBuilderTopK(e.target.value)}
+                              onChange={e =>
+                                setMilvusBuilderTopK(e.target.value)
+                              }
                               className="h-9 font-mono text-xs"
                               inputMode="numeric"
                             />
@@ -1178,7 +1187,9 @@ export default function DataSourceCenter() {
                             </div>
                             <Input
                               value={milvusBuilderFilter}
-                              onChange={e => setMilvusBuilderFilter(e.target.value)}
+                              onChange={e =>
+                                setMilvusBuilderFilter(e.target.value)
+                              }
                               className="h-9 font-mono text-xs"
                               placeholder="id > 0"
                             />
