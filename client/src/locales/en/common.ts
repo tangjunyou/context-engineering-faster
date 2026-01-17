@@ -248,6 +248,8 @@ const common = {
     empty: "(No datasets)",
     refresh: "Refresh",
     create: "Create",
+    newDataset: "New Dataset",
+    back: "Back",
     createPromptName: "Enter dataset name",
     createPromptRows: "Enter rows JSON (array)",
     invalidJson: "Invalid JSON",
@@ -478,6 +480,21 @@ const common = {
   errors: {
     unexpected: "An unexpected error occurred.",
     reload: "Reload Page",
+  },
+  tour: {
+    welcome: "Welcome to Context Workbench! Here you can visually orchestrate the context logic for your AI applications.",
+    welcomeTitle: "Welcome",
+    leftPanel: "This is the library and resource panel. Manage variables and drag nodes to the canvas from here.",
+    leftPanelTitle: "Resource Panel",
+    canvas: "This is the main canvas. Drag and drop nodes, and connect them to define context assembly flow.",
+    canvasTitle: "Canvas Area",
+    rightPanel: "This is the property inspector. Select a node to configure its details and preview the output.",
+    rightPanelTitle: "Property Panel",
+    back: "Back",
+    close: "Close",
+    last: "Done",
+    next: "Next",
+    skip: "Skip",
   },
 } as const;
 

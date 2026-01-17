@@ -27,6 +27,7 @@ import { shallow } from "zustand/shallow";
 import { ProjectManagerDialog } from "@/components/ProjectManagerDialog";
 import { SessionManagerDialog } from "@/components/SessionManagerDialog";
 import QuickStartOverlay from "@/components/QuickStartOverlay";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 const nodeTypes = {
   contextNode: ContextNode,
@@ -101,8 +102,11 @@ export default function Home() {
     addNode(newNode);
   };
 
-  return (
+return (
     <div className="h-screen w-screen bg-background text-foreground overflow-hidden flex flex-col">
+      <OnboardingTour />
+      {/* Header */}<OnboardingTour />
+      {/* Header */}<OnboardingTour />
       {/* Header */}
       <header className="h-14 border-b border-border bg-card flex items-center px-4 justify-between z-10">
         <div className="flex items-center gap-2">
@@ -183,6 +187,7 @@ export default function Home() {
         <ResizablePanelGroup direction="horizontal">
           {/* Left Sidebar */}
           <ResizablePanel
+            id="workbench-left-panel"
             defaultSize={20}
             minSize={15}
             maxSize={30}
@@ -308,7 +313,7 @@ export default function Home() {
           <ResizableHandle />
 
           {/* Center Canvas */}
-          <ResizablePanel defaultSize={55}>
+          <ResizablePanel defaultSize={55} id="workbench-canvas">
             <div className="h-full w-full bg-background relative">
               {nodes.length === 0 ? (
                 <div className="absolute inset-0 z-10 flex items-center justify-center">
@@ -386,6 +391,7 @@ export default function Home() {
 
           {/* Right Sidebar */}
           <ResizablePanel
+            id="workbench-right-panel"
             defaultSize={25}
             minSize={20}
             maxSize={40}

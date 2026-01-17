@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { RJSFSchema } from "@rjsf/utils";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SchemaForm } from "@/components/ui/schema-form";
 import { useStore } from "@/lib/store";
 import {
   createDataset,
@@ -30,6 +32,26 @@ import {
 import TraceViewer from "@/components/TraceViewer";
 import RunComparePanel from "@/components/RunComparePanel";
 
+const createDatasetSchema: RJSFSchema = {
+  type: "object",
+  required: ["name", "items"],
+  properties: {
+    name: { type: "string", title: "Dataset Name", default: "My Dataset" },
+    items: {
+      type: "array",
+      title: "Data Rows",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string", title: "Content" },
+          id: { type: "string", title: "ID (Optional)" },
+        },
+        required: ["text"],
+      },
+    },
+  },
+};
+
 export function DatasetCenterDialog(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,6 +70,9 @@ export function DatasetCenterDialog(props: {
   const [replayResults, setReplayResults] = useState<RunSummary[]>([]);
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
 
+  // New State for Creation Flow
+  const [isCreating, setIsCreating] = useState(false);
+
   const refresh = async () => {
     setLoading(true);
     try {
@@ -63,6 +88,8 @@ export function DatasetCenterDialog(props: {
 
   useEffect(() => {
     if (!open) return;
+    // Reset states on open
+    setIsCreating(false);
     setSelected(null);
     setSelectedRun(null);
     setReplayResults([]);
@@ -95,23 +122,14 @@ export function DatasetCenterDialog(props: {
     return items.find(x => x.id === selectedId) ?? null;
   }, [items, selectedId]);
 
-  const handleCreate = async () => {
-    const name = window.prompt(t("datasetCenter.createPromptName"), "dataset");
-    if (!name) return;
-    const text = window.prompt(
-      t("datasetCenter.createPromptRows"),
-      '[{"id":"1","text":"你好"}]'
-    );
-    if (!text) return;
-    let rows: any[] = [];
+  const handleCreateSubmit = async (data: any) => {
+    const { formData } = data;
+    if (!formData) return;
     try {
-      rows = JSON.parse(text);
-    } catch {
-      toast.error(t("datasetCenter.invalidJson"));
-      return;
-    }
-    try {
-      const ds = await createDataset({ name, rows });
+      const ds = await createDataset({
+        name: formData.name,
+        rows: formData.items,
+      });
       toast.success(t("datasetCenter.created"));
       setItems(prev => [
         {
@@ -123,6 +141,7 @@ export function DatasetCenterDialog(props: {
         ...prev,
       ]);
       setSelectedId(ds.id);
+      setIsCreating(false);
     } catch {
       toast.error(t("datasetCenter.createFailed"));
     }
@@ -213,206 +232,231 @@ export function DatasetCenterDialog(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl">
+      <DialogContent className="sm:max-w-5xl h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{t("datasetCenter.title")}</DialogTitle>
+          <DialogTitle>
+            {isCreating ? t("datasetCenter.newDataset") : t("datasetCenter.title")}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Input
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-                placeholder={t("datasetCenter.search")}
-                className="h-9"
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleCreate()}
-                >
-                  {t("datasetCenter.create")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void refresh()}
-                  disabled={loading}
-                >
-                  {t("datasetCenter.refresh")}
-                </Button>
-              </div>
-            </div>
-
-            <ScrollArea className="h-[420px] rounded-md border border-border">
-              <div className="p-2 space-y-2">
-                {filtered.length === 0 ? (
-                  <div className="text-xs text-muted-foreground p-2">
-                    {loading
-                      ? t("datasetCenter.loading")
-                      : t("datasetCenter.empty")}
-                  </div>
-                ) : (
-                  filtered.map(ds => (
-                    <button
-                      key={ds.id}
-                      type="button"
-                      onClick={() => setSelectedId(ds.id)}
-                      className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                        selectedId === ds.id
-                          ? "bg-muted"
-                          : "bg-background/50 hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className="text-sm font-medium truncate">
-                        {ds.name}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground font-mono truncate">
-                        {ds.id}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {t("datasetCenter.rows", { n: ds.rowCount })}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
+        {isCreating ? (
+          <div className="flex-1 overflow-auto p-4">
+            <Button
+              variant="ghost"
+              className="mb-4"
+              onClick={() => setIsCreating(false)}
+            >
+              &larr; {t("datasetCenter.back")}
+            </Button>
+            <SchemaForm
+              schema={createDatasetSchema}
+              onSubmit={handleCreateSubmit}
+              uiSchema={{
+                "ui:submitButtonOptions": {
+                  submitText: t("datasetCenter.create"),
+                },
+              }}
+            />
           </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">
-                {t("datasetCenter.detail")}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleReplay()}
-                  disabled={!selectedId || replayLoading}
-                >
-                  {replayLoading
-                    ? t("datasetCenter.replaying")
-                    : t("datasetCenter.replay")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleEmbedToVector()}
-                  disabled={!selectedId}
-                >
-                  {t("datasetCenter.embedToVector")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleDelete()}
-                  disabled={!selectedId}
-                >
-                  {t("datasetCenter.delete")}
-                </Button>
-              </div>
-            </div>
-
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                <TabsTrigger value="preview">
-                  {t("datasetCenter.tabPreview")}
-                </TabsTrigger>
-                <TabsTrigger value="replay">
-                  {t("datasetCenter.tabReplay")}
-                </TabsTrigger>
-                <TabsTrigger value="compare">
-                  {t("datasetCenter.tabCompare")}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="preview">
-                <div className="rounded-md border border-border bg-background/50 p-3">
-                  <pre className="text-[11px] leading-5 overflow-auto max-h-[420px]">
-                    {selected
-                      ? JSON.stringify(
-                          { ...selected, rows: selected.rows.slice(0, 20) },
-                          null,
-                          2
-                        )
-                      : t("datasetCenter.noSelection")}
-                  </pre>
+        ) : (
+          <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden min-h-0">
+            <div className="space-y-2 flex flex-col h-full">
+              <div className="flex items-center justify-between shrink-0">
+                <Input
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                  placeholder={t("datasetCenter.search")}
+                  className="h-9 w-1/2"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsCreating(true)}
+                  >
+                    {t("datasetCenter.create")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void refresh()}
+                    disabled={loading}
+                  >
+                    {t("datasetCenter.refresh")}
+                  </Button>
                 </div>
-              </TabsContent>
+              </div>
 
-              <TabsContent value="replay">
-                <div className="space-y-3">
-                  <div className="text-xs text-muted-foreground">
-                    {t("datasetCenter.replayResults")}
-                  </div>
-
-                  {replayResults.length === 0 ? (
-                    <div className="text-xs text-muted-foreground">
-                      {t("datasetCenter.replayEmpty")}
+              <ScrollArea className="flex-1 rounded-md border border-border">
+                <div className="p-2 space-y-2">
+                  {filtered.length === 0 ? (
+                    <div className="text-xs text-muted-foreground p-2">
+                      {loading
+                        ? t("datasetCenter.loading")
+                        : t("datasetCenter.empty")}
                     </div>
                   ) : (
-                    <div className="rounded-md border border-border bg-background/50">
-                      <div className="p-2 space-y-2 max-h-[180px] overflow-auto">
-                        {replayResults.map(r => (
-                          <button
-                            key={r.runId}
-                            type="button"
-                            onClick={() =>
-                              void getRun(r.runId)
-                                .then(setSelectedRun)
-                                .catch(() => {
-                                  toast.error(t("datasetCenter.runLoadFailed"));
-                                })
-                            }
-                            className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
-                              selectedRun?.runId === r.runId
-                                ? "bg-muted"
-                                : "bg-background/50 hover:bg-muted/50"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="text-sm font-medium truncate">
-                                {t("datasetCenter.runRow", { idx: r.rowIndex })}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground">
-                                {r.status}
-                              </div>
-                            </div>
-                            <div className="text-[11px] text-muted-foreground font-mono truncate">
-                              {r.runId}
-                            </div>
-                          </button>
-                        ))}
+                    filtered.map(ds => (
+                      <button
+                        key={ds.id}
+                        type="button"
+                        onClick={() => setSelectedId(ds.id)}
+                        className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
+                          selectedId === ds.id
+                            ? "bg-muted"
+                            : "bg-background/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="text-sm font-medium truncate">
+                          {ds.name}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground font-mono truncate">
+                          {ds.id}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {t("datasetCenter.rows", { n: ds.rowCount })}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            <div className="space-y-3 flex flex-col h-full overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
+                <div className="text-xs text-muted-foreground">
+                  {t("datasetCenter.detail")}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleReplay()}
+                    disabled={!selectedId || replayLoading}
+                  >
+                    {replayLoading
+                      ? t("datasetCenter.replaying")
+                      : t("datasetCenter.replay")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleEmbedToVector()}
+                    disabled={!selectedId}
+                  >
+                    {t("datasetCenter.embedToVector")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleDelete()}
+                    disabled={!selectedId}
+                  >
+                    {t("datasetCenter.delete")}
+                  </Button>
+                </div>
+              </div>
+
+              <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
+                <TabsList className="shrink-0">
+                  <TabsTrigger value="preview">
+                    {t("datasetCenter.tabPreview")}
+                  </TabsTrigger>
+                  <TabsTrigger value="replay">
+                    {t("datasetCenter.tabReplay")}
+                  </TabsTrigger>
+                  <TabsTrigger value="compare">
+                    {t("datasetCenter.tabCompare")}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="preview" className="flex-1 min-h-0 overflow-auto">
+                  <div className="rounded-md border border-border bg-background/50 p-3 h-full">
+                    <pre className="text-[11px] leading-5 overflow-auto h-full">
+                      {selected
+                        ? JSON.stringify(
+                            { ...selected, rows: selected.rows.slice(0, 20) },
+                            null,
+                            2
+                          )
+                        : t("datasetCenter.noSelection")}
+                    </pre>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="replay" className="flex-1 min-h-0 overflow-auto">
+                  <div className="space-y-3 h-full flex flex-col">
+                    <div className="text-xs text-muted-foreground shrink-0">
+                      {t("datasetCenter.replayResults")}
+                    </div>
+
+                    {replayResults.length === 0 ? (
+                      <div className="text-xs text-muted-foreground">
+                        {t("datasetCenter.replayEmpty")}
                       </div>
+                    ) : (
+                      <div className="rounded-md border border-border bg-background/50 shrink-0">
+                        <div className="p-2 space-y-2 max-h-[180px] overflow-auto">
+                          {replayResults.map(r => (
+                            <button
+                              key={r.runId}
+                              type="button"
+                              onClick={() =>
+                                void getRun(r.runId)
+                                  .then(setSelectedRun)
+                                  .catch(() => {
+                                    toast.error(t("datasetCenter.runLoadFailed"));
+                                  })
+                              }
+                              className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
+                                selectedRun?.runId === r.runId
+                                  ? "bg-muted"
+                                  : "bg-background/50 hover:bg-muted/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-sm font-medium truncate">
+                                  {t("datasetCenter.runRow", { idx: r.rowIndex })}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {r.status}
+                                </div>
+                              </div>
+                              <div className="text-[11px] text-muted-foreground font-mono truncate">
+                                {r.runId}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedRun?.trace ? (
+                      <div className="flex-1 min-h-0 border border-border rounded-md overflow-hidden">
+                        <TraceViewer trace={selectedRun.trace} />
+                      </div>
+                    ) : null}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="compare" className="flex-1 min-h-0 overflow-auto">
+                  {selectedId ? (
+                    <RunComparePanel
+                      datasetId={selectedId}
+                      rowCount={selectedSummary?.rowCount ?? 0}
+                      onRequestReplayTab={() => setTab("replay")}
+                    />
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      {t("datasetCenter.noSelection")}
                     </div>
                   )}
-
-                  {selectedRun?.trace ? (
-                    <TraceViewer trace={selectedRun.trace} />
-                  ) : null}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="compare">
-                {selectedId ? (
-                  <RunComparePanel
-                    datasetId={selectedId}
-                    rowCount={selectedSummary?.rowCount ?? 0}
-                    onRequestReplayTab={() => setTab("replay")}
-                  />
-                ) : (
-                  <div className="text-xs text-muted-foreground">
-                    {t("datasetCenter.noSelection")}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );
