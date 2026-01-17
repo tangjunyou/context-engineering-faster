@@ -24,6 +24,7 @@ import {
   testDataSource,
   updateDataSource,
   listMilvusCollections,
+  getDataSourceCapabilities,
   listDataSourceTables,
   previewTableRows,
   milvusInsert,
@@ -46,6 +47,51 @@ function getResolver(driver: string, id: string) {
   return `sql://${id}`;
 }
 
+type SqlTemplate = {
+  id: string;
+  label: string;
+  build: (input: { table: string }) => string;
+};
+
+function getSqlTemplates(driver: string): SqlTemplate[] {
+  const basic: SqlTemplate[] = [
+    { id: "basic", label: "SELECT 1", build: () => "SELECT 1 AS value" },
+    {
+      id: "by_table_first_row",
+      label: "按表取首行",
+      build: ({ table }) => `SELECT * FROM ${table} LIMIT 1`,
+    },
+    {
+      id: "count_rows",
+      label: "统计行数",
+      build: ({ table }) => `SELECT COUNT(*) AS value FROM ${table}`,
+    },
+  ];
+
+  if (driver === "postgres") {
+    return [
+      ...basic,
+      {
+        id: "pg_cte",
+        label: "CTE 示例（Postgres）",
+        build: ({ table }) =>
+          `WITH t AS (SELECT * FROM ${table} LIMIT 10)\nSELECT COUNT(*) AS value FROM t`,
+      },
+    ];
+  }
+  if (driver === "mysql") {
+    return [
+      ...basic,
+      {
+        id: "mysql_limit_offset",
+        label: "分页示例（MySQL）",
+        build: ({ table }) => `SELECT * FROM ${table} LIMIT 10 OFFSET 0`,
+      },
+    ];
+  }
+  return basic;
+}
+
 export default function DataSourceCenter() {
   const { t } = useTranslation();
   const { addVariable, selectedNodeId, updateNodeData, nodes } = useStore(
@@ -60,6 +106,10 @@ export default function DataSourceCenter() {
   const [items, setItems] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedCaps, setSelectedCaps] = useState<Awaited<
+    ReturnType<typeof getDataSourceCapabilities>
+  > | null>(null);
+  const [capsLoading, setCapsLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [importForId, setImportForId] = useState<string | null>(null);
   const [browseSqlFor, setBrowseSqlFor] = useState<{
@@ -80,6 +130,7 @@ export default function DataSourceCenter() {
   >(null);
 
   const [sqlBuilderQuery, setSqlBuilderQuery] = useState("SELECT 1 AS value");
+  const [sqlTemplateId, setSqlTemplateId] = useState("basic");
   const [sqlBuilderVarName, setSqlBuilderVarName] = useState("sql_value");
   const [sqlBuilderAttach, setSqlBuilderAttach] = useState(true);
   const [sqlBuilderRunning, setSqlBuilderRunning] = useState(false);
@@ -89,6 +140,16 @@ export default function DataSourceCenter() {
   const [milvusOp, setMilvusOp] = useState<"search" | "query" | "insert">(
     "search"
   );
+  const [milvusBuilderEnabled, setMilvusBuilderEnabled] = useState(true);
+  const [milvusBuilderCollectionName, setMilvusBuilderCollectionName] =
+    useState("your_collection");
+  const [milvusBuilderVectorsText, setMilvusBuilderVectorsText] = useState(
+    "[[0.1, 0.1, 0.1, 0.1]]"
+  );
+  const [milvusBuilderTopK, setMilvusBuilderTopK] = useState("10");
+  const [milvusBuilderFilter, setMilvusBuilderFilter] = useState("");
+  const [milvusBuilderOutputFields, setMilvusBuilderOutputFields] =
+    useState("");
   const [milvusBodyText, setMilvusBodyText] = useState("{}");
   const [milvusRunLoading, setMilvusRunLoading] = useState(false);
   const [milvusRunResult, setMilvusRunResult] = useState<unknown>(null);
@@ -99,6 +160,12 @@ export default function DataSourceCenter() {
     () => items.find(x => x.id === selectedId) ?? null,
     [items, selectedId]
   );
+
+  const sqlTemplates = useMemo(() => {
+    if (!selected) return [];
+    if (!isSqlDriver(selected.driver)) return [];
+    return getSqlTemplates(selected.driver);
+  }, [selected]);
 
   const refresh = async () => {
     setLoading(true);
@@ -118,6 +185,22 @@ export default function DataSourceCenter() {
   }, []);
 
   useEffect(() => {
+    setSelectedCaps(null);
+    if (!selectedId) return;
+    setCapsLoading(true);
+    void getDataSourceCapabilities({ dataSourceId: selectedId })
+      .then(v => {
+        setSelectedCaps(v);
+      })
+      .catch(() => {
+        setSelectedCaps(null);
+      })
+      .finally(() => {
+        setCapsLoading(false);
+      });
+  }, [selectedId]);
+
+  useEffect(() => {
     setMilvusCollections(null);
     setMilvusRunResult(null);
     setSqlTables([]);
@@ -127,12 +210,15 @@ export default function DataSourceCenter() {
     if (!selected) return;
 
     if (isSqlDriver(selected.driver)) {
-      void listDataSourceTables({ dataSourceId: selected.id })
-        .then(res => {
-          setSqlTables(res.tables ?? []);
-          if (res.tables?.[0]) setSelectedTable(res.tables[0]);
-        })
-        .catch(() => setSqlTables([]));
+      setSqlTemplateId("basic");
+      if (selectedCaps?.allowSchema) {
+        void listDataSourceTables({ dataSourceId: selected.id })
+          .then(res => {
+            setSqlTables(res.tables ?? []);
+            if (res.tables?.[0]) setSelectedTable(res.tables[0]);
+          })
+          .catch(() => setSqlTables([]));
+      }
 
       setSqlBuilderQuery("SELECT 1 AS value");
       setSqlBuilderVarName(`${selected.name.replaceAll(" ", "_")}_value`);
@@ -140,6 +226,12 @@ export default function DataSourceCenter() {
 
     if (selected.driver === "milvus") {
       setMilvusOp("search");
+      setMilvusBuilderEnabled(true);
+      setMilvusBuilderCollectionName("your_collection");
+      setMilvusBuilderVectorsText("[[0.1, 0.1, 0.1, 0.1]]");
+      setMilvusBuilderTopK("10");
+      setMilvusBuilderFilter("");
+      setMilvusBuilderOutputFields("");
       setMilvusBodyText(
         JSON.stringify(
           {
@@ -153,7 +245,7 @@ export default function DataSourceCenter() {
       );
       setMilvusVarName(`${selected.name.replaceAll(" ", "_")}_result`);
     }
-  }, [selected?.id]);
+  }, [selected?.id, selectedCaps?.allowSchema]);
 
   const handleTest = async (id: string) => {
     try {
@@ -190,6 +282,11 @@ export default function DataSourceCenter() {
     try {
       const updated = await updateDataSource(ds.id, input);
       setItems(prev => prev.map(v => (v.id === ds.id ? updated : v)));
+      if (selectedId === ds.id) {
+        void getDataSourceCapabilities({ dataSourceId: ds.id })
+          .then(v => setSelectedCaps(v))
+          .catch(() => {});
+      }
       toast.success(t("dataSourceManager.created"));
     } catch {
       toast.error(t("dataSourceManager.updateFailed"));
@@ -197,43 +294,61 @@ export default function DataSourceCenter() {
   };
 
   const capabilities = useMemo(() => {
-    if (!selected) return [];
+    if (!selected || !selectedCaps || capsLoading) return [];
     const caps: Array<{ key: string; label: string; enabled: boolean }> = [];
 
-    const allowImport = Boolean(selected.allowImport);
-    const allowWrite = Boolean(selected.allowWrite);
-    const allowSchema = Boolean(selected.allowSchema);
-    const allowDelete = Boolean(selected.allowDelete);
+    const allowImport = Boolean(selectedCaps.allowImport);
+    const allowWrite = Boolean(selectedCaps.allowWrite);
+    const allowSchema = Boolean(selectedCaps.allowSchema);
+    const allowDelete = Boolean(selectedCaps.allowDelete);
 
-    if (isSqlDriver(selected.driver)) {
-      caps.push({ key: "schema", label: "结构浏览", enabled: true });
-      caps.push({
-        key: "preview",
-        label: "数据预览",
-        enabled: selected.driver === "sqlite" || true,
-      });
-      caps.push({ key: "query", label: "查询运行", enabled: true });
+    if (selectedCaps.supportsTables || selectedCaps.supportsColumns) {
+      caps.push({ key: "schema", label: "结构浏览", enabled: allowSchema });
+      caps.push({ key: "preview", label: "数据预览", enabled: allowSchema });
+      caps.push({ key: "query", label: "查询运行", enabled: allowSchema });
       caps.push({ key: "import", label: "CSV 导入", enabled: allowImport });
       caps.push({ key: "write", label: "写入", enabled: allowWrite });
-      caps.push({
-        key: "schemaWrite",
-        label: "建表/改表",
-        enabled: allowSchema,
-      });
       caps.push({ key: "delete", label: "删除", enabled: allowDelete });
-    } else if (selected.driver === "milvus") {
-      caps.push({ key: "collections", label: "Collections", enabled: true });
-      caps.push({ key: "search", label: "向量检索", enabled: true });
+      if (selectedCaps.supportsSqliteRowsApi) {
+        caps.push({
+          key: "sqliteRows",
+          label: "SQLite 行级操作",
+          enabled: allowWrite,
+        });
+      }
+    } else if (
+      selectedCaps.supportsMilvusCollections ||
+      selectedCaps.supportsMilvusOps
+    ) {
+      caps.push({
+        key: "collections",
+        label: "Collections",
+        enabled: selectedCaps.supportsMilvusCollections && allowSchema,
+      });
+      caps.push({
+        key: "milvusRead",
+        label: "向量检索",
+        enabled: selectedCaps.supportsMilvusOps && allowSchema,
+      });
+      caps.push({
+        key: "milvusWrite",
+        label: "向量写入",
+        enabled: selectedCaps.supportsMilvusOps && allowWrite,
+      });
     } else if (selected.driver === "neo4j") {
       caps.push({ key: "labels", label: "Labels", enabled: true });
       caps.push({ key: "cypher", label: "Cypher 执行", enabled: true });
     }
 
     return caps;
-  }, [selected]);
+  }, [selected, selectedCaps]);
 
   const handleLoadMilvusCollections = async () => {
     if (!selected || selected.driver !== "milvus") return;
+    if (!selectedCaps?.supportsMilvusCollections || !selectedCaps.allowSchema) {
+      toast.error("未授权或未启用：无法读取 collections");
+      return;
+    }
     setMilvusLoading(true);
     try {
       const res = await listMilvusCollections({ dataSourceId: selected.id });
@@ -250,6 +365,10 @@ export default function DataSourceCenter() {
   const handlePreviewRows = async () => {
     if (!selected) return;
     if (!isSqlDriver(selected.driver)) return;
+    if (!selectedCaps?.allowSchema) {
+      toast.error("未授权：结构/读取能力已关闭");
+      return;
+    }
     const table = selectedTable.trim();
     if (!table) return;
     const limit = Number(previewLimit);
@@ -274,6 +393,10 @@ export default function DataSourceCenter() {
   const handleRunSqlBuilder = async () => {
     if (!selected) return;
     if (!isSqlDriver(selected.driver)) return;
+    if (!selectedCaps?.allowSchema) {
+      toast.error("未授权：结构/读取能力已关闭");
+      return;
+    }
     const query = sqlBuilderQuery.trim();
     if (!query) return;
     setSqlBuilderRunning(true);
@@ -323,8 +446,48 @@ export default function DataSourceCenter() {
     toast.success("已创建变量");
   };
 
+  const applyMilvusSearchBuilderToBody = () => {
+    if (!selected || selected.driver !== "milvus") return;
+    let data: unknown;
+    try {
+      data = JSON.parse(milvusBuilderVectorsText);
+    } catch {
+      toast.error("向量数据不是合法 JSON");
+      return;
+    }
+    const limit = Number(milvusBuilderTopK);
+    if (!Number.isFinite(limit) || limit <= 0) {
+      toast.error("topK 必须是正数");
+      return;
+    }
+    const outputFields = milvusBuilderOutputFields
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+    const body: Record<string, unknown> = {
+      collectionName: milvusBuilderCollectionName.trim() || "your_collection",
+      data,
+      limit,
+    };
+    if (milvusBuilderFilter.trim()) body.filter = milvusBuilderFilter.trim();
+    if (outputFields.length) body.outputFields = outputFields;
+    setMilvusBodyText(JSON.stringify(body, null, 2));
+  };
+
   const handleRunMilvus = async () => {
     if (!selected || selected.driver !== "milvus") return;
+    if (!selectedCaps?.supportsMilvusOps) {
+      toast.error("Milvus 功能未启用");
+      return;
+    }
+    if (milvusOp === "insert" && !selectedCaps.allowWrite) {
+      toast.error("未授权：写入能力已关闭");
+      return;
+    }
+    if (milvusOp !== "insert" && !selectedCaps.allowSchema) {
+      toast.error("未授权：结构/读取能力已关闭");
+      return;
+    }
     let body: unknown;
     try {
       body = JSON.parse(milvusBodyText);
@@ -556,6 +719,50 @@ export default function DataSourceCenter() {
                     </div>
                   </div>
 
+                  {selectedCaps && (
+                    <div className="rounded-md border border-border bg-background/50 p-3">
+                      <div className="text-xs text-muted-foreground">提示</div>
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {isSqlDriver(selected.driver) &&
+                          !selectedCaps.allowSchema && (
+                            <div>
+                              结构/读取能力已关闭：请在 Permissions 打开「
+                              {t("dataSourceManager.allowSchema")}」
+                            </div>
+                          )}
+                        {isSqlDriver(selected.driver) &&
+                          !selectedCaps.allowImport && (
+                            <div>
+                              CSV 导入已关闭：请在 Permissions 打开「
+                              {t("dataSourceManager.allowImport")}」
+                            </div>
+                          )}
+                        {selected.driver === "milvus" &&
+                          !selectedCaps.supportsMilvusOps && (
+                            <div>
+                              Milvus 未启用：需要在后端启用 milvus feature
+                            </div>
+                          )}
+                        {selected.driver === "milvus" &&
+                          selectedCaps.supportsMilvusOps &&
+                          !selectedCaps.allowSchema && (
+                            <div>
+                              Milvus 读取能力已关闭：search/query 需要「
+                              {t("dataSourceManager.allowSchema")}」
+                            </div>
+                          )}
+                        {selected.driver === "milvus" &&
+                          selectedCaps.supportsMilvusOps &&
+                          !selectedCaps.allowWrite && (
+                            <div>
+                              Milvus 写入能力已关闭：insert 需要「
+                              {t("dataSourceManager.allowWrite")}」
+                            </div>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-md border border-border bg-background/50 p-3">
                     <div className="text-xs text-muted-foreground">解析器</div>
                     <div className="mt-2 font-mono text-xs break-all">
@@ -660,6 +867,55 @@ export default function DataSourceCenter() {
                     <div className="rounded-md border border-border bg-background/50 p-3 space-y-2">
                       <div className="text-xs text-muted-foreground">
                         SQL Builder（只读查询用于预览；变量执行仍以解析器为准）
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2 space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            模板
+                          </div>
+                          <Select
+                            value={sqlTemplateId}
+                            onValueChange={v => {
+                              setSqlTemplateId(v);
+                              const tmpl = sqlTemplates.find(t => t.id === v);
+                              if (!tmpl) return;
+                              const table =
+                                selectedTable.trim() || "your_table";
+                              setSqlBuilderQuery(tmpl.build({ table }));
+                            }}
+                          >
+                            <SelectTrigger className="w-full font-mono">
+                              <SelectValue placeholder="template" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sqlTemplates.map(tmpl => (
+                                <SelectItem key={tmpl.id} value={tmpl.id}>
+                                  {tmpl.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            Table
+                          </div>
+                          <Select
+                            value={selectedTable}
+                            onValueChange={v => setSelectedTable(v)}
+                          >
+                            <SelectTrigger className="w-full font-mono">
+                              <SelectValue placeholder="table" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sqlTables.map(tn => (
+                                <SelectItem key={tn} value={tn}>
+                                  {tn}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       <Textarea
                         value={sqlBuilderQuery}
@@ -843,6 +1099,116 @@ export default function DataSourceCenter() {
                           />
                         </div>
                       </div>
+
+                      {milvusOp === "search" && (
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={milvusBuilderEnabled}
+                              onCheckedChange={setMilvusBuilderEnabled}
+                            />
+                            <div className="text-xs text-muted-foreground">
+                              可视化 Search Builder
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => applyMilvusSearchBuilderToBody()}
+                            disabled={!milvusBuilderEnabled}
+                          >
+                            生成 JSON
+                          </Button>
+                        </div>
+                      )}
+
+                      {milvusOp === "search" && milvusBuilderEnabled && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">
+                              collectionName
+                            </div>
+                            {milvusCollections?.collections?.length ? (
+                              <Select
+                                value={milvusBuilderCollectionName}
+                                onValueChange={setMilvusBuilderCollectionName}
+                              >
+                                <SelectTrigger className="w-full font-mono">
+                                  <SelectValue placeholder="collection" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {milvusCollections.collections.map(name => (
+                                    <SelectItem key={name} value={name}>
+                                      {name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                value={milvusBuilderCollectionName}
+                                onChange={e =>
+                                  setMilvusBuilderCollectionName(e.target.value)
+                                }
+                                className="h-9 font-mono text-xs"
+                                placeholder="your_collection"
+                              />
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">
+                              topK
+                            </div>
+                            <Input
+                              value={milvusBuilderTopK}
+                              onChange={e =>
+                                setMilvusBuilderTopK(e.target.value)
+                              }
+                              className="h-9 font-mono text-xs"
+                              inputMode="numeric"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">
+                              outputFields（逗号分隔）
+                            </div>
+                            <Input
+                              value={milvusBuilderOutputFields}
+                              onChange={e =>
+                                setMilvusBuilderOutputFields(e.target.value)
+                              }
+                              className="h-9 font-mono text-xs"
+                              placeholder="id,title"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">
+                              filter
+                            </div>
+                            <Input
+                              value={milvusBuilderFilter}
+                              onChange={e =>
+                                setMilvusBuilderFilter(e.target.value)
+                              }
+                              className="h-9 font-mono text-xs"
+                              placeholder="id > 0"
+                            />
+                          </div>
+                          <div className="col-span-2 space-y-1">
+                            <div className="text-xs text-muted-foreground">
+                              data（JSON 数组）
+                            </div>
+                            <Textarea
+                              value={milvusBuilderVectorsText}
+                              onChange={e =>
+                                setMilvusBuilderVectorsText(e.target.value)
+                              }
+                              className="min-h-20 font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <Textarea
                         value={milvusBodyText}
                         onChange={e => setMilvusBodyText(e.target.value)}

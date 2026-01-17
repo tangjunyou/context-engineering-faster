@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -160,7 +160,7 @@ export function CreateDataSourceDialog(props: {
       milvusToken: "",
       allowImport: false,
       allowWrite: false,
-      allowSchema: false,
+      allowSchema: true,
       allowDelete: false,
     },
   });
@@ -168,6 +168,7 @@ export function CreateDataSourceDialog(props: {
   const driver = form.watch("driver");
   const mode = form.watch("connectionMode");
   const sqliteLocal = form.watch("sqliteLocal");
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const submit = form.handleSubmit(async values => {
     try {
@@ -232,6 +233,12 @@ export function CreateDataSourceDialog(props: {
 
         <Form {...form}>
           <form onSubmit={submit} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                {t("dataSourceManager.stepLabel", { step, total: 3 })}
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="name"
@@ -274,7 +281,7 @@ export function CreateDataSourceDialog(props: {
               )}
             />
 
-            {driver === "sqlite" && (
+            {step >= 2 && driver === "sqlite" && (
               <>
                 <FormField
                   control={form.control}
@@ -330,7 +337,7 @@ export function CreateDataSourceDialog(props: {
               </>
             )}
 
-            {(driver === "postgres" || driver === "mysql") && (
+            {step >= 2 && (driver === "postgres" || driver === "mysql") && (
               <>
                 <FormField
                   control={form.control}
@@ -509,7 +516,7 @@ export function CreateDataSourceDialog(props: {
               </>
             )}
 
-            {driver === "milvus" && (
+            {step >= 2 && driver === "milvus" && (
               <>
                 <FormField
                   control={form.control}
@@ -554,95 +561,106 @@ export function CreateDataSourceDialog(props: {
               </>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="allowImport"
-                render={({ field }) => (
-                  <FormItem className="rounded-md border border-border p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
+            {step >= 3 && (
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="allowImport"
+                  render={({ field }) => (
+                    <FormItem className="rounded-md border border-border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm">
+                            {t("dataSourceManager.allowImport")}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t("dataSourceManager.allowImportHint")}
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={Boolean(field.value)}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="allowWrite"
+                  render={({ field }) => (
+                    <FormItem className="rounded-md border border-border p-3">
+                      <div className="flex items-center justify-between gap-3">
                         <div className="text-sm">
-                          {t("dataSourceManager.allowImport")}
+                          {t("dataSourceManager.allowWrite")}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {t("dataSourceManager.allowImportHint")}
+                        <FormControl>
+                          <Switch
+                            checked={Boolean(field.value)}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="allowSchema"
+                  render={({ field }) => (
+                    <FormItem className="rounded-md border border-border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm">
+                          {t("dataSourceManager.allowSchema")}
                         </div>
+                        <FormControl>
+                          <Switch
+                            checked={Boolean(field.value)}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
                       </div>
-                      <FormControl>
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="allowWrite"
-                render={({ field }) => (
-                  <FormItem className="rounded-md border border-border p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm">
-                        {t("dataSourceManager.allowWrite")}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="allowDelete"
+                  render={({ field }) => (
+                    <FormItem className="rounded-md border border-border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm">
+                          {t("dataSourceManager.allowDelete")}
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={Boolean(field.value)}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
                       </div>
-                      <FormControl>
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="allowSchema"
-                render={({ field }) => (
-                  <FormItem className="rounded-md border border-border p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm">
-                        {t("dataSourceManager.allowSchema")}
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="allowDelete"
-                render={({ field }) => (
-                  <FormItem className="rounded-md border border-border p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm">
-                        {t("dataSourceManager.allowDelete")}
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
+              {step > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(s => (s === 1 ? s : ((s - 1) as any)))}
+                >
+                  {t("dataSourceManager.stepBack")}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -650,7 +668,16 @@ export function CreateDataSourceDialog(props: {
               >
                 {t("imports.cancel")}
               </Button>
-              <Button type="submit">{t("dataSourceManager.create")}</Button>
+              {step < 3 ? (
+                <Button
+                  type="button"
+                  onClick={() => setStep(s => (s === 3 ? s : ((s + 1) as any)))}
+                >
+                  {t("dataSourceManager.stepNext")}
+                </Button>
+              ) : (
+                <Button type="submit">{t("dataSourceManager.create")}</Button>
+              )}
             </div>
           </form>
         </Form>

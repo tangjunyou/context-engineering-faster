@@ -7,13 +7,13 @@ import {
   BackgroundVariant,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { Link } from "@tanstack/react-router";
 
 import { useStore } from "@/lib/store";
 import type { ContextFlowNode, NodeType } from "@/lib/types";
 import ContextNode from "@/components/ContextNode";
 import WorkbenchLayout from "@/components/WorkbenchLayout";
 const VariableManager = lazy(() => import("@/components/VariableManager"));
-const DataSourceManager = lazy(() => import("@/components/DataSourceManager"));
 const PropertyInspector = lazy(() => import("@/components/PropertyInspector"));
 const PreviewPanel = lazy(() => import("@/components/PreviewPanel"));
 import {
@@ -202,15 +202,19 @@ export default function Home() {
                   <VariableManager />
                 </Suspense>
               ) : activeLeftPanel === "datasources" ? (
-                <Suspense
-                  fallback={
-                    <div className="p-4 text-sm text-muted-foreground">
-                      Loading…
-                    </div>
-                  }
-                >
-                  <DataSourceManager />
-                </Suspense>
+                <div className="p-4 grid gap-3">
+                  <div className="text-sm font-medium">
+                    {t("dataSourceManager.title")}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("dataSourceManager.openCenterHint")}
+                  </div>
+                  <Button asChild>
+                    <Link to="/workbench/datasources">
+                      {t("dataSourceManager.openCenter")}
+                    </Link>
+                  </Button>
+                </div>
               ) : (
                 <div className="p-4 grid gap-2">
                   <div className="text-xs font-bold text-muted-foreground mb-2 uppercase">

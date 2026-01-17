@@ -39,7 +39,11 @@ async fn datasource_query_and_tables_work_for_sqlite() {
     let body = serde_json::json!({
         "name": "sqlite-demo",
         "driver": "sqlite",
-        "url": url
+        "url": url,
+        "allowImport": false,
+        "allowWrite": false,
+        "allowSchema": true,
+        "allowDelete": false
     })
     .to_string();
 

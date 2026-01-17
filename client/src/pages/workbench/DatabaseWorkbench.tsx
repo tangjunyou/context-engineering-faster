@@ -34,10 +34,12 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/lib/api/types";
 
 export default function DatabaseWorkbench() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const addVariable = useStore(s => s.addVariable);
 
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
@@ -527,9 +529,10 @@ export default function DatabaseWorkbench() {
                             resolver: `sql://${ds.id}`,
                           });
                           toast.success(t("database.variableCreated"));
-                          window.location.href = `/workbench/variables?varId=${encodeURIComponent(
-                            id
-                          )}`;
+                          void navigate({
+                            to: "/workbench/variables",
+                            search: { varId: id } as any,
+                          });
                         }}
                       >
                         {t("database.createVariable")}
@@ -754,7 +757,7 @@ function CreateExternalDbForm(props: {
                 url: url.trim(),
                 allowImport: false,
                 allowWrite: false,
-                allowSchema: false,
+                allowSchema: true,
                 allowDelete: false,
               });
               toast.success(t("dataSourceManager.created"));

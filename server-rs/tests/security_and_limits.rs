@@ -8,6 +8,8 @@ use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn sql_query_rejects_non_select() {
+    std::env::set_var("ALLOW_SQL_DIRECT_URL", "1");
+
     let dir = tempdir().unwrap();
     let data_dir = dir.path().join("data");
     let static_dir = dir.path().join("static");
@@ -44,6 +46,8 @@ async fn sql_query_rejects_non_select() {
 async fn sql_query_row_limit_is_clamped() {
     use sqlx::{Connection, Executor};
 
+    std::env::set_var("DATA_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+
     let dir = tempdir().unwrap();
     let data_dir = dir.path().join("data");
     let static_dir = dir.path().join("static");
@@ -71,7 +75,34 @@ async fn sql_query_row_limit_is_clamped() {
     let app = server_rs::build_app_with_data_dir(static_dir, data_dir);
 
     let body = serde_json::json!({
+        "name": "sqlite-demo",
+        "driver": "sqlite",
         "url": url,
+        "allowImport": false,
+        "allowWrite": false,
+        "allowSchema": true,
+        "allowDelete": false
+    })
+    .to_string();
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/datasources")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    let ds_id = json["id"].as_str().unwrap().to_string();
+
+    let body = serde_json::json!({
+        "dataSourceId": ds_id,
         "query": "SELECT id FROM items ORDER BY id",
         "rowLimit": 999999
     })

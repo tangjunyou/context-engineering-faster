@@ -475,7 +475,7 @@ struct DataSourceCreateRequest {
     allow_import: bool,
     #[serde(default)]
     allow_write: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     allow_schema: bool,
     #[serde(default)]
     allow_delete: bool,
@@ -526,10 +526,15 @@ struct DataSourceStored {
     #[serde(default)]
     allow_write: bool,
     #[serde(default)]
-    allow_schema: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    allow_schema: Option<bool>,
     #[serde(default)]
     allow_delete: bool,
     updated_at: String,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize)]
@@ -579,6 +584,7 @@ async fn list_datasources(State(state): State<AppState>) -> axum::response::Resp
         }
         if let Ok(text) = tokio::fs::read_to_string(&path).await {
             if let Ok(ds) = serde_json::from_str::<DataSourceStored>(&text) {
+                let allow_schema = ds.allow_schema.unwrap_or(true);
                 out.push(DataSourcePublic {
                     id: ds.id,
                     name: ds.name,
@@ -586,7 +592,7 @@ async fn list_datasources(State(state): State<AppState>) -> axum::response::Resp
                     url: "<redacted>".to_string(),
                     allow_import: ds.allow_import,
                     allow_write: ds.allow_write,
-                    allow_schema: ds.allow_schema,
+                    allow_schema,
                     allow_delete: ds.allow_delete,
                     updated_at: ds.updated_at,
                 });
@@ -658,7 +664,7 @@ async fn create_datasource(
         url_enc,
         allow_import: req.allow_import,
         allow_write: req.allow_write,
-        allow_schema: req.allow_schema,
+        allow_schema: Some(req.allow_schema),
         allow_delete: req.allow_delete,
         updated_at: now_ms().to_string(),
     };
@@ -680,7 +686,7 @@ async fn create_datasource(
             url: "<redacted>".to_string(),
             allow_import: stored.allow_import,
             allow_write: stored.allow_write,
-            allow_schema: stored.allow_schema,
+            allow_schema: stored.allow_schema.unwrap_or(true),
             allow_delete: stored.allow_delete,
             updated_at: stored.updated_at,
         }),
@@ -760,7 +766,7 @@ async fn create_local_sqlite_datasource(
         url_enc,
         allow_import: true,
         allow_write: true,
-        allow_schema: true,
+        allow_schema: Some(true),
         allow_delete: true,
         updated_at: now_ms().to_string(),
     };
@@ -782,7 +788,7 @@ async fn create_local_sqlite_datasource(
             url: "<redacted>".to_string(),
             allow_import: stored.allow_import,
             allow_write: stored.allow_write,
-            allow_schema: stored.allow_schema,
+            allow_schema: stored.allow_schema.unwrap_or(true),
             allow_delete: stored.allow_delete,
             updated_at: stored.updated_at,
         }),
@@ -1911,7 +1917,7 @@ async fn get_datasource(
             url: "<redacted>".to_string(),
             allow_import: stored.allow_import,
             allow_write: stored.allow_write,
-            allow_schema: stored.allow_schema,
+            allow_schema: stored.allow_schema.unwrap_or(true),
             allow_delete: stored.allow_delete,
             updated_at: stored.updated_at,
         }),
@@ -1961,7 +1967,7 @@ async fn update_datasource(
         stored.allow_write = v;
     }
     if let Some(v) = allow_schema {
-        stored.allow_schema = v;
+        stored.allow_schema = Some(v);
     }
     if let Some(v) = allow_delete {
         stored.allow_delete = v;
@@ -2082,7 +2088,7 @@ async fn update_datasource(
             url: "<redacted>".to_string(),
             allow_import: stored.allow_import,
             allow_write: stored.allow_write,
-            allow_schema: stored.allow_schema,
+            allow_schema: stored.allow_schema.unwrap_or(true),
             allow_delete: stored.allow_delete,
             updated_at: stored.updated_at,
         }),
@@ -2494,7 +2500,7 @@ async fn create_sqlite_table(
         )
             .into_response();
     }
-    if !stored.allow_schema {
+    if !stored.allow_schema.unwrap_or(true) {
         return (
             StatusCode::FORBIDDEN,
             Json(serde_json::json!({ "error": "schema_disabled" })),
@@ -3280,8 +3286,8 @@ async fn list_milvus_collections(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> axum::response::Response {
-    let driver = match load_datasource(&state, &id).await {
-        Ok(ds) => ds.driver,
+    let ds = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
         Err(_) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -3291,12 +3297,26 @@ async fn list_milvus_collections(
         }
     };
 
-    if driver != "milvus" {
+    if ds.driver != "milvus" {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": ds.driver })),
         )
             .into_response();
+    }
+    if !cfg!(feature = "milvus") {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+        )
+            .into_response();
+    }
+    if !ds.allow_schema.unwrap_or(true) {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
 
     let cfg = match decrypt_milvus_config(&state, &id).await {
@@ -3398,7 +3418,7 @@ async fn get_datasource_capabilities(
     let driver = ds.driver.clone();
     let allow_import = ds.allow_import;
     let allow_write = ds.allow_write;
-    let allow_schema = ds.allow_schema;
+    let allow_schema = ds.allow_schema.unwrap_or(true);
     let allow_delete = ds.allow_delete;
 
     let resolver = match driver.as_str() {
@@ -3412,8 +3432,8 @@ async fn get_datasource_capabilities(
     let supports_sql_query = is_sql_driver(&driver);
     let supports_csv_import = is_sql_driver(&driver);
     let supports_sqlite_rows_api = driver == "sqlite";
-    let supports_milvus_collections = driver == "milvus";
-    let supports_milvus_ops = driver == "milvus";
+    let supports_milvus_collections = driver == "milvus" && cfg!(feature = "milvus");
+    let supports_milvus_ops = driver == "milvus" && cfg!(feature = "milvus");
 
     (
         StatusCode::OK,
@@ -3442,8 +3462,8 @@ async fn milvus_insert_entities(
     Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> axum::response::Response {
-    let driver = match load_datasource(&state, &id).await {
-        Ok(ds) => ds.driver,
+    let ds = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
         Err(_) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -3452,12 +3472,22 @@ async fn milvus_insert_entities(
                 .into_response();
         }
     };
-    if driver != "milvus" {
+    if ds.driver != "milvus" {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": ds.driver })),
         )
             .into_response();
+    }
+    if !cfg!(feature = "milvus") {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+        )
+            .into_response();
+    }
+    if !ds.allow_write {
+        return json_error(StatusCode::FORBIDDEN, "forbidden", "未授权：写入能力已关闭");
     }
     let cfg = match decrypt_milvus_config(&state, &id).await {
         Ok(v) => v,
@@ -3497,8 +3527,8 @@ async fn milvus_search_entities(
     Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> axum::response::Response {
-    let driver = match load_datasource(&state, &id).await {
-        Ok(ds) => ds.driver,
+    let ds = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
         Err(_) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -3507,12 +3537,26 @@ async fn milvus_search_entities(
                 .into_response();
         }
     };
-    if driver != "milvus" {
+    if ds.driver != "milvus" {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": ds.driver })),
         )
             .into_response();
+    }
+    if !cfg!(feature = "milvus") {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+        )
+            .into_response();
+    }
+    if !ds.allow_schema.unwrap_or(true) {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
     let cfg = match decrypt_milvus_config(&state, &id).await {
         Ok(v) => v,
@@ -3552,8 +3596,8 @@ async fn milvus_query_entities(
     Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> axum::response::Response {
-    let driver = match load_datasource(&state, &id).await {
-        Ok(ds) => ds.driver,
+    let ds = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
         Err(_) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -3562,12 +3606,26 @@ async fn milvus_query_entities(
                 .into_response();
         }
     };
-    if driver != "milvus" {
+    if ds.driver != "milvus" {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": ds.driver })),
         )
             .into_response();
+    }
+    if !cfg!(feature = "milvus") {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+        )
+            .into_response();
+    }
+    if !ds.allow_schema.unwrap_or(true) {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
     let cfg = match decrypt_milvus_config(&state, &id).await {
         Ok(v) => v,
@@ -3612,8 +3670,8 @@ async fn list_datasource_tables(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> axum::response::Response {
-    let driver = match load_datasource(&state, &id).await {
-        Ok(ds) => ds.driver,
+    let stored = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
         Err(_) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -3622,12 +3680,19 @@ async fn list_datasource_tables(
                 .into_response();
         }
     };
-    if !is_sql_driver(&driver) {
+    if !is_sql_driver(&stored.driver) {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": stored.driver })),
         )
             .into_response();
+    }
+    if !stored.allow_schema.unwrap_or(true) {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
 
     let url = match decrypt_datasource_url(&state, &id).await {
@@ -3685,6 +3750,13 @@ async fn list_datasource_table_columns(
             Json(serde_json::json!({ "error": "unsupported_driver", "driver": stored.driver })),
         )
             .into_response();
+    }
+    if !stored.allow_schema.unwrap_or(true) {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
     }
 
     if !is_safe_table_name(&table) {
@@ -3754,6 +3826,13 @@ async fn preview_datasource_table_rows(
         )
             .into_response();
     }
+    if !stored.allow_schema.unwrap_or(true) {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "未授权：结构/读取能力已关闭",
+        );
+    }
     if !is_safe_table_name(&table) {
         return (
             StatusCode::BAD_REQUEST,
@@ -3787,6 +3866,49 @@ async fn preview_datasource_table_rows(
 
 fn is_sql_driver(driver: &str) -> bool {
     matches!(driver, "sqlite" | "postgres" | "mysql")
+}
+
+fn env_flag_enabled(key: &str) -> bool {
+    std::env::var(key)
+        .ok()
+        .map(|v| {
+            matches!(
+                v.as_str(),
+                "1" | "true" | "TRUE" | "yes" | "YES" | "on" | "ON"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn is_readonly_sql(query: &str) -> bool {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if trimmed.contains(';') {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if !(lower.starts_with("select") || lower.starts_with("with")) {
+        return false;
+    }
+    let forbidden = [
+        "insert", "update", "delete", "drop", "alter", "create", "truncate", "grant", "revoke",
+        "merge", "call", "execute",
+    ];
+    !forbidden.iter().any(|kw| lower.contains(kw))
+}
+
+fn json_error(
+    status: StatusCode,
+    error: &str,
+    message: impl Into<String>,
+) -> axum::response::Response {
+    (
+        status,
+        Json(serde_json::json!({ "error": error, "message": message.into() })),
+    )
+        .into_response()
 }
 
 fn is_safe_table_name(name: &str) -> bool {
@@ -4533,50 +4655,62 @@ async fn sql_query(
     Json(req): Json<SqlQueryRequest>,
 ) -> axum::response::Response {
     let query = req.query.trim();
-    let lower = query.to_ascii_lowercase();
-    if !(lower.starts_with("select") || lower.starts_with("with")) {
-        return (
+    if !is_readonly_sql(query) {
+        return json_error(
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({
-                "error": "readonly_required",
-                "message": "仅允许 SELECT/WITH 查询",
-            })),
-        )
-            .into_response();
+            "readonly_required",
+            "仅允许只读 SELECT/WITH 查询",
+        );
     }
 
     let limit = req.row_limit.unwrap_or(100).min(1000) as i64;
-    let url = match (req.url, req.data_source_id) {
-        (Some(url), _) => url,
-        (None, Some(id)) => match decrypt_datasource_url(&state, &id).await {
+    let url = if let Some(id) = req.data_source_id {
+        let ds = match load_datasource(&state, &id).await {
+            Ok(ds) => ds,
+            Err(err) => {
+                return json_error(
+                    StatusCode::BAD_REQUEST,
+                    "datasource_failed",
+                    err.to_string(),
+                );
+            }
+        };
+        if !is_sql_driver(&ds.driver) {
+            return json_error(StatusCode::BAD_REQUEST, "unsupported_driver", ds.driver);
+        }
+        if !ds.allow_schema.unwrap_or(true) {
+            return json_error(
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "未授权：结构/读取能力已关闭",
+            );
+        }
+        match decrypt_datasource_url(&state, &id).await {
             Ok(url) => url,
             Err(err) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": "datasource_failed", "message": err.to_string() })),
-                )
-                    .into_response();
+                return json_error(StatusCode::BAD_REQUEST, "decrypt_failed", err.to_string());
             }
-        },
-        (None, None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": "missing_url", "message": "url 或 dataSourceId 必须提供其一" })),
-            )
-                .into_response();
         }
+    } else if let Some(url) = req.url {
+        if !env_flag_enabled("ALLOW_SQL_DIRECT_URL") {
+            return json_error(
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "已禁用：直连 URL 查询（请使用 dataSourceId）",
+            );
+        }
+        url
+    } else {
+        return json_error(
+            StatusCode::BAD_REQUEST,
+            "missing_url",
+            "url 或 dataSourceId 必须提供其一",
+        );
     };
     let rows = match query_any_rows(&url, query, limit).await {
         Ok(rows) => rows,
         Err(err) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "query_failed",
-                    "message": err.to_string(),
-                })),
-            )
-                .into_response();
+            return json_error(StatusCode::BAD_REQUEST, "query_failed", err.to_string());
         }
     };
 
