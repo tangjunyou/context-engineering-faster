@@ -102,11 +102,13 @@ export default function Home() {
     addNode(newNode);
   };
 
-return (
+  return (
     <div className="h-screen w-screen bg-background text-foreground overflow-hidden flex flex-col">
       <OnboardingTour />
-      {/* Header */}<OnboardingTour />
-      {/* Header */}<OnboardingTour />
+      {/* Header */}
+      <OnboardingTour />
+      {/* Header */}
+      <OnboardingTour />
       {/* Header */}
       <header className="h-14 border-b border-border bg-card flex items-center px-4 justify-between z-10">
         <div className="flex items-center gap-2">

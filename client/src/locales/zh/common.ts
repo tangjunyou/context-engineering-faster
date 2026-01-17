@@ -477,7 +477,8 @@ const common = {
     reload: "刷新页面",
   },
   tour: {
-    welcome: "欢迎使用上下文工作台！在这里，您可以可视化地编排 AI 应用的上下文逻辑。",
+    welcome:
+      "欢迎使用上下文工作台！在这里，您可以可视化地编排 AI 应用的上下文逻辑。",
     welcomeTitle: "欢迎",
     leftPanel: "这是组件库和资源面板。您可以从这里管理变量、拖拽节点到画布。",
     leftPanelTitle: "资源面板",

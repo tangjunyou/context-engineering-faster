@@ -34,17 +34,19 @@ vi.mock("@/lib/api/datasets", () => ({
 
 // Mock other APIs to prevent crash
 vi.mock("@/lib/api/jobs", () => ({ embedToVectorJob: vi.fn() }));
-vi.mock("@/lib/api/runs", () => ({ 
-  replayDataset: vi.fn(), 
+vi.mock("@/lib/api/runs", () => ({
+  replayDataset: vi.fn(),
   getRun: vi.fn(),
   listDatasetRuns: vi.fn(),
-  listDatasetRunsForRow: vi.fn()
+  listDatasetRunsForRow: vi.fn(),
 }));
 
 describe("DatasetCenterDialog (Creation Flow)", () => {
   it("switches to form view when clicking create", async () => {
-    const { DatasetCenterDialog } = await import("@/components/DatasetCenterDialog");
-    
+    const { DatasetCenterDialog } = await import(
+      "@/components/DatasetCenterDialog"
+    );
+
     render(<DatasetCenterDialog open onOpenChange={() => {}} />);
 
     // Click "Create" button to open the form
@@ -52,6 +54,8 @@ describe("DatasetCenterDialog (Creation Flow)", () => {
     fireEvent.click(createBtn);
 
     // Should show "New Dataset" title
-    expect(await screen.findByText("datasetCenter.newDataset")).toBeInTheDocument();
+    expect(
+      await screen.findByText("datasetCenter.newDataset")
+    ).toBeInTheDocument();
   });
 });

@@ -8,8 +8,8 @@ export function OnboardingTour() {
 
   useEffect(() => {
     // Check if running in test environment to avoid interference
-    if (process.env.NODE_ENV === 'test') return;
-    
+    if (process.env.NODE_ENV === "test") return;
+
     const completed = localStorage.getItem("onboarding_complete");
     if (!completed) {
       setRun(true);
@@ -68,12 +68,12 @@ export function OnboardingTour() {
           arrowColor: "hsl(var(--card))",
         },
         buttonNext: {
-            backgroundColor: "hsl(var(--primary))",
-            color: "hsl(var(--primary-foreground))",
+          backgroundColor: "hsl(var(--primary))",
+          color: "hsl(var(--primary-foreground))",
         },
         buttonBack: {
-            color: "hsl(var(--muted-foreground))",
-        }
+          color: "hsl(var(--muted-foreground))",
+        },
       }}
       locale={{
         back: t("tour.back"),

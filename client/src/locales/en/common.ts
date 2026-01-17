@@ -482,13 +482,17 @@ const common = {
     reload: "Reload Page",
   },
   tour: {
-    welcome: "Welcome to Context Workbench! Here you can visually orchestrate the context logic for your AI applications.",
+    welcome:
+      "Welcome to Context Workbench! Here you can visually orchestrate the context logic for your AI applications.",
     welcomeTitle: "Welcome",
-    leftPanel: "This is the library and resource panel. Manage variables and drag nodes to the canvas from here.",
+    leftPanel:
+      "This is the library and resource panel. Manage variables and drag nodes to the canvas from here.",
     leftPanelTitle: "Resource Panel",
-    canvas: "This is the main canvas. Drag and drop nodes, and connect them to define context assembly flow.",
+    canvas:
+      "This is the main canvas. Drag and drop nodes, and connect them to define context assembly flow.",
     canvasTitle: "Canvas Area",
-    rightPanel: "This is the property inspector. Select a node to configure its details and preview the output.",
+    rightPanel:
+      "This is the property inspector. Select a node to configure its details and preview the output.",
     rightPanelTitle: "Property Panel",
     back: "Back",
     close: "Close",

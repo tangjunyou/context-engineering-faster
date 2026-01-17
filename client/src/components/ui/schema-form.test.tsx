@@ -17,7 +17,7 @@ describe("SchemaForm", () => {
     };
 
     render(<SchemaForm schema={schema} />);
-    
+
     // This should fail initially as we only have a placeholder
     expect(screen.getByLabelText("Test String Label")).toBeInTheDocument();
   });
@@ -36,7 +36,7 @@ describe("SchemaForm", () => {
     // Mock filling form
     const input = screen.getByLabelText("Name");
     fireEvent.change(input, { target: { value: "Alice" } });
-    
+
     // Click submit
     const submitBtn = screen.getByRole("button", { name: /submit/i });
     fireEvent.click(submitBtn);

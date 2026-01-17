@@ -235,7 +235,9 @@ export function DatasetCenterDialog(props: {
       <DialogContent className="sm:max-w-5xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {isCreating ? t("datasetCenter.newDataset") : t("datasetCenter.title")}
+            {isCreating
+              ? t("datasetCenter.newDataset")
+              : t("datasetCenter.title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -358,7 +360,11 @@ export function DatasetCenterDialog(props: {
                 </div>
               </div>
 
-              <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
+              <Tabs
+                value={tab}
+                onValueChange={setTab}
+                className="flex-1 flex flex-col min-h-0"
+              >
                 <TabsList className="shrink-0">
                   <TabsTrigger value="preview">
                     {t("datasetCenter.tabPreview")}
@@ -371,7 +377,10 @@ export function DatasetCenterDialog(props: {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="preview" className="flex-1 min-h-0 overflow-auto">
+                <TabsContent
+                  value="preview"
+                  className="flex-1 min-h-0 overflow-auto"
+                >
                   <div className="rounded-md border border-border bg-background/50 p-3 h-full">
                     <pre className="text-[11px] leading-5 overflow-auto h-full">
                       {selected
@@ -385,7 +394,10 @@ export function DatasetCenterDialog(props: {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="replay" className="flex-1 min-h-0 overflow-auto">
+                <TabsContent
+                  value="replay"
+                  className="flex-1 min-h-0 overflow-auto"
+                >
                   <div className="space-y-3 h-full flex flex-col">
                     <div className="text-xs text-muted-foreground shrink-0">
                       {t("datasetCenter.replayResults")}
@@ -406,7 +418,9 @@ export function DatasetCenterDialog(props: {
                                 void getRun(r.runId)
                                   .then(setSelectedRun)
                                   .catch(() => {
-                                    toast.error(t("datasetCenter.runLoadFailed"));
+                                    toast.error(
+                                      t("datasetCenter.runLoadFailed")
+                                    );
                                   })
                               }
                               className={`w-full text-left rounded-md border border-border px-3 py-2 transition-colors ${
@@ -417,7 +431,9 @@ export function DatasetCenterDialog(props: {
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="text-sm font-medium truncate">
-                                  {t("datasetCenter.runRow", { idx: r.rowIndex })}
+                                  {t("datasetCenter.runRow", {
+                                    idx: r.rowIndex,
+                                  })}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground">
                                   {r.status}
@@ -440,7 +456,10 @@ export function DatasetCenterDialog(props: {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="compare" className="flex-1 min-h-0 overflow-auto">
+                <TabsContent
+                  value="compare"
+                  className="flex-1 min-h-0 overflow-auto"
+                >
                   {selectedId ? (
                     <RunComparePanel
                       datasetId={selectedId}
