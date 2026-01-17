@@ -247,6 +247,8 @@ const common = {
     empty: "（暂无 datasets）",
     refresh: "刷新",
     create: "创建",
+    newDataset: "新建数据集",
+    back: "返回",
     createPromptName: "请输入 dataset 名称",
     createPromptRows: "请输入 rows JSON（数组）",
     invalidJson: "JSON 无效",
@@ -473,6 +475,22 @@ const common = {
   errors: {
     unexpected: "发生了一个意外错误。",
     reload: "刷新页面",
+  },
+  tour: {
+    welcome:
+      "欢迎使用上下文工作台！在这里，您可以可视化地编排 AI 应用的上下文逻辑。",
+    welcomeTitle: "欢迎",
+    leftPanel: "这是组件库和资源面板。您可以从这里管理变量、拖拽节点到画布。",
+    leftPanelTitle: "资源面板",
+    canvas: "这是主画布。您可以自由拖拽节点，并用连线定义上下文的组装顺序。",
+    canvasTitle: "画布区域",
+    rightPanel: "这是属性面板。选中节点后，可以在这里配置详细参数和预览效果。",
+    rightPanelTitle: "属性面板",
+    back: "上一步",
+    close: "关闭",
+    last: "完成",
+    next: "下一步",
+    skip: "跳过",
   },
 } as const;
 
