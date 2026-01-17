@@ -56,11 +56,19 @@ export function VectorStudioDialog(props: {
     JSON.stringify(Array(4).fill(0.1))
   );
   const [searchFilterText, setSearchFilterText] = useState(
-    JSON.stringify({ must: [{ key: "tag", match: { value: "demo" } }] }, null, 2)
+    JSON.stringify(
+      { must: [{ key: "tag", match: { value: "demo" } }] },
+      null,
+      2
+    )
   );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteFilterText, setDeleteFilterText] = useState(
-    JSON.stringify({ must: [{ key: "tag", match: { value: "demo" } }] }, null, 2)
+    JSON.stringify(
+      { must: [{ key: "tag", match: { value: "demo" } }] },
+      null,
+      2
+    )
   );
 
   const refresh = async () => {

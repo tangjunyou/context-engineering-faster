@@ -3477,11 +3477,17 @@ async fn milvus_insert_entities(
             if msg.contains("feature") && msg.contains("未启用") {
                 return (
                     StatusCode::NOT_IMPLEMENTED,
-                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                    Json(
+                        serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" }),
+                    ),
                 )
                     .into_response();
             }
-            (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "request_failed", "message": msg }))).into_response()
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "request_failed", "message": msg })),
+            )
+                .into_response()
         }
     }
 }
@@ -3526,11 +3532,17 @@ async fn milvus_search_entities(
             if msg.contains("feature") && msg.contains("未启用") {
                 return (
                     StatusCode::NOT_IMPLEMENTED,
-                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                    Json(
+                        serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" }),
+                    ),
                 )
                     .into_response();
             }
-            (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "request_failed", "message": msg }))).into_response()
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "request_failed", "message": msg })),
+            )
+                .into_response()
         }
     }
 }
@@ -3575,11 +3587,17 @@ async fn milvus_query_entities(
             if msg.contains("feature") && msg.contains("未启用") {
                 return (
                     StatusCode::NOT_IMPLEMENTED,
-                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                    Json(
+                        serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" }),
+                    ),
                 )
                     .into_response();
             }
-            (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "request_failed", "message": msg }))).into_response()
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "request_failed", "message": msg })),
+            )
+                .into_response()
         }
     }
 }

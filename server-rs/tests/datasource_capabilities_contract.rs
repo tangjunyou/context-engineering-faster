@@ -142,4 +142,3 @@ fn sqlite_url(path: &std::path::Path) -> String {
     let p = path.to_string_lossy().replace('\\', "/");
     format!("sqlite:///{p}")
 }
-

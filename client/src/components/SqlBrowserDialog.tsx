@@ -65,7 +65,11 @@ export function SqlBrowserDialog(props: Props) {
   const [createTableOpen, setCreateTableOpen] = useState(false);
   const [createTableName, setCreateTableName] = useState("");
   const [createTableColumnsText, setCreateTableColumnsText] = useState(
-    JSON.stringify([{ name: "id", dataType: "INTEGER", nullable: false }], null, 2)
+    JSON.stringify(
+      [{ name: "id", dataType: "INTEGER", nullable: false }],
+      null,
+      2
+    )
   );
   const [insertRowOpen, setInsertRowOpen] = useState(false);
   const [insertRowText, setInsertRowText] = useState('{"name":"Alice"}');
@@ -86,7 +90,11 @@ export function SqlBrowserDialog(props: Props) {
     setCreateTableOpen(false);
     setCreateTableName("");
     setCreateTableColumnsText(
-      JSON.stringify([{ name: "id", dataType: "INTEGER", nullable: false }], null, 2)
+      JSON.stringify(
+        [{ name: "id", dataType: "INTEGER", nullable: false }],
+        null,
+        2
+      )
     );
     setInsertRowOpen(false);
     setInsertRowText('{"name":"Alice"}');

@@ -207,7 +207,9 @@ export async function previewTableRows(input: {
     window.location.origin
   );
   if (input.limit != null) url.searchParams.set("limit", String(input.limit));
-  return requestJson<{ rows: Record<string, unknown>[] }>(url.pathname + url.search);
+  return requestJson<{ rows: Record<string, unknown>[] }>(
+    url.pathname + url.search
+  );
 }
 
 export async function listNeo4jLabels(input: {
@@ -230,31 +232,40 @@ export async function milvusInsert(input: {
   dataSourceId: string;
   body: unknown;
 }): Promise<unknown> {
-  return requestJson<unknown>(`/api/datasources/${input.dataSourceId}/milvus/insert`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input.body),
-  });
+  return requestJson<unknown>(
+    `/api/datasources/${input.dataSourceId}/milvus/insert`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input.body),
+    }
+  );
 }
 
 export async function milvusSearch(input: {
   dataSourceId: string;
   body: unknown;
 }): Promise<unknown> {
-  return requestJson<unknown>(`/api/datasources/${input.dataSourceId}/milvus/search`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input.body),
-  });
+  return requestJson<unknown>(
+    `/api/datasources/${input.dataSourceId}/milvus/search`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input.body),
+    }
+  );
 }
 
 export async function milvusQuery(input: {
   dataSourceId: string;
   body: unknown;
 }): Promise<unknown> {
-  return requestJson<unknown>(`/api/datasources/${input.dataSourceId}/milvus/query`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input.body),
-  });
+  return requestJson<unknown>(
+    `/api/datasources/${input.dataSourceId}/milvus/query`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input.body),
+    }
+  );
 }
