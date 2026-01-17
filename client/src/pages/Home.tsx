@@ -11,6 +11,7 @@ import "@xyflow/react/dist/style.css";
 import { useStore } from "@/lib/store";
 import type { ContextFlowNode, NodeType } from "@/lib/types";
 import ContextNode from "@/components/ContextNode";
+import WorkbenchLayout from "@/components/WorkbenchLayout";
 const VariableManager = lazy(() => import("@/components/VariableManager"));
 const DataSourceManager = lazy(() => import("@/components/DataSourceManager"));
 const PropertyInspector = lazy(() => import("@/components/PropertyInspector"));
@@ -24,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { BrainCircuit, Layers, Box, Database, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shallow } from "zustand/shallow";
-import { ProjectManagerDialog } from "@/components/ProjectManagerDialog";
 import { SessionManagerDialog } from "@/components/SessionManagerDialog";
 import QuickStartOverlay from "@/components/QuickStartOverlay";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -36,7 +36,6 @@ const nodeTypes = {
 export default function Home() {
   const { t, i18n } = useTranslation();
   const {
-    projectName,
     nodes,
     edges,
     onNodesChange,
@@ -47,7 +46,6 @@ export default function Home() {
     applyContextTemplate,
   } = useStore(
     state => ({
-      projectName: state.projectName,
       nodes: state.nodes,
       edges: state.edges,
       onNodesChange: state.onNodesChange,
@@ -66,7 +64,6 @@ export default function Home() {
   const [activeRightPanel, setActiveRightPanel] = useState<
     "properties" | "preview"
   >("preview");
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [quickStartOpen, setQuickStartOpen] = useState(false);
   const [didAutoOpenQuickStart, setDidAutoOpenQuickStart] = useState(false);
@@ -103,54 +100,32 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen w-screen bg-background text-foreground overflow-hidden flex flex-col">
-      <OnboardingTour />
-      {/* Header */}
-      <OnboardingTour />
-      {/* Header */}
-      <OnboardingTour />
-      {/* Header */}
-      <header className="h-14 border-b border-border bg-card flex items-center px-4 justify-between z-10">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary/20 p-1.5 rounded text-primary">
-            <BrainCircuit size={20} />
-          </div>
-          <h1 className="font-bold text-lg tracking-tight">{t("app.name")}</h1>
-        </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{t("app.version")}</span>
-          <div className="h-4 w-[1px] bg-border"></div>
-          <span>{t("app.projectLabel", { name: projectName })}</span>
-          <div className="h-4 w-[1px] bg-border"></div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-7 px-2 text-xs"
-              onClick={() => setQuickStartOpen(true)}
-            >
-              {t("quickStart.open")}
-            </Button>
-            <Button
-              variant="outline"
-              className="h-7 px-2 text-xs"
-              onClick={() => setProjectDialogOpen(true)}
-            >
-              {t("projects.manage")}
-            </Button>
-            <Button
-              variant="outline"
-              className="h-7 px-2 text-xs"
-              onClick={() => setSessionDialogOpen(true)}
-            >
-              {t("sessions.manage")}
-            </Button>
-          </div>
-          <div className="h-4 w-[1px] bg-border"></div>
-          <div className="flex items-center gap-2">
-            <span>{t("nav.language")}:</span>
+    <WorkbenchLayout
+      title={t("workbench.recipe")}
+      headerActions={
+        <>
+          <Button
+            variant="outline"
+            className="h-8 px-3 text-sm"
+            onClick={() => setQuickStartOpen(true)}
+          >
+            {t("quickStart.open")}
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 px-3 text-sm"
+            onClick={() => setSessionDialogOpen(true)}
+          >
+            {t("sessions.manage")}
+          </Button>
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-5 w-px bg-border mx-1" />
+            <span className="text-xs text-muted-foreground">
+              {t("nav.language")}:
+            </span>
             <Button
               variant="ghost"
-              className="h-7 px-2 text-xs"
+              className="h-8 px-2 text-xs"
               onClick={() => i18n.changeLanguage("en")}
               disabled={i18n.resolvedLanguage === "en"}
             >
@@ -158,22 +133,18 @@ export default function Home() {
             </Button>
             <Button
               variant="ghost"
-              className="h-7 px-2 text-xs"
+              className="h-8 px-2 text-xs"
               onClick={() => i18n.changeLanguage("zh")}
               disabled={i18n.resolvedLanguage === "zh"}
             >
               {t("nav.languageZH")}
             </Button>
           </div>
-        </div>
-      </header>
-
-      {/* Main Workspace */}
-      <div className="flex-1 overflow-hidden">
-        <ProjectManagerDialog
-          open={projectDialogOpen}
-          onOpenChange={setProjectDialogOpen}
-        />
+        </>
+      }
+    >
+      <div className="h-full overflow-hidden">
+        <OnboardingTour />
         <SessionManagerDialog
           open={sessionDialogOpen}
           onOpenChange={setSessionDialogOpen}
@@ -434,6 +405,6 @@ export default function Home() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-    </div>
+    </WorkbenchLayout>
   );
 }

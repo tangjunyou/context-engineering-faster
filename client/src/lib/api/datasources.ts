@@ -20,6 +20,9 @@ export async function createDataSource(input: {
   name: string;
   driver: string;
   url: string;
+  username?: string;
+  password?: string;
+  token?: string;
   allowImport?: boolean;
   allowWrite?: boolean;
   allowSchema?: boolean;
