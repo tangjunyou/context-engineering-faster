@@ -203,7 +203,7 @@ export default function DataSourceManager() {
         <h2 className="font-mono font-bold text-sm uppercase tracking-wider shrink-0">
           {t("dataSourceManager.title")}
         </h2>
-        
+
         <div className="w-full overflow-hidden">
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex w-max space-x-2 pb-2">
@@ -249,7 +249,11 @@ export default function DataSourceManager() {
               >
                 {t("importHistory.open")}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => void refresh()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void refresh()}
+              >
                 {t("dataSourceManager.refresh")}
               </Button>
             </div>

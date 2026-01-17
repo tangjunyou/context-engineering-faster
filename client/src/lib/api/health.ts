@@ -8,4 +8,3 @@ export type HealthzResponse = {
 export async function healthz(): Promise<HealthzResponse> {
   return requestJson<HealthzResponse>("/api/healthz");
 }
-

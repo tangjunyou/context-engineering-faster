@@ -60,36 +60,36 @@ export default function VariablesWorkbench() {
     >
       {activePanel === "library" ? (
         <div className="h-full p-4">
-            <VariableLibraryPanel
-              initialSelectedId={initialSelectedId}
-              initialFilter={initialFilter}
-              onImportToProjectVariables={item => {
-                const current =
-                  item.versions.find(
-                    v => v.versionId === item.currentVersionId
-                  ) ?? item.versions[item.versions.length - 1];
-                if (!current) return;
-                const v: Variable = {
-                  id: item.id,
-                  name: current.data.name,
-                  type:
-                    current.data.type === "static" ||
-                    current.data.type === "dynamic"
-                      ? current.data.type
-                      : "dynamic",
-                  value: current.data.value,
-                  description: current.data.description,
-                  source: current.data.source ?? "variable_library",
-                  resolver: current.data.resolver,
-                };
-                if (variables.some(x => x.id === v.id)) {
-                  updateVariable(v);
-                } else {
-                  addVariable(v);
-                }
-                setActivePanel("builder");
-              }}
-            />
+          <VariableLibraryPanel
+            initialSelectedId={initialSelectedId}
+            initialFilter={initialFilter}
+            onImportToProjectVariables={item => {
+              const current =
+                item.versions.find(
+                  v => v.versionId === item.currentVersionId
+                ) ?? item.versions[item.versions.length - 1];
+              if (!current) return;
+              const v: Variable = {
+                id: item.id,
+                name: current.data.name,
+                type:
+                  current.data.type === "static" ||
+                  current.data.type === "dynamic"
+                    ? current.data.type
+                    : "dynamic",
+                value: current.data.value,
+                description: current.data.description,
+                source: current.data.source ?? "variable_library",
+                resolver: current.data.resolver,
+              };
+              if (variables.some(x => x.id === v.id)) {
+                updateVariable(v);
+              } else {
+                addVariable(v);
+              }
+              setActivePanel("builder");
+            }}
+          />
         </div>
       ) : (
         <div className="h-full p-4">

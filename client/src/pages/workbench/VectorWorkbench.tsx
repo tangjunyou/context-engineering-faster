@@ -51,7 +51,8 @@ export default function VectorWorkbench() {
     try {
       const list = await listVectorCollections();
       setCollections(list);
-      if (!selectedCollection && list[0]?.name) setSelectedCollection(list[0].name);
+      if (!selectedCollection && list[0]?.name)
+        setSelectedCollection(list[0].name);
     } catch {
       toast.error(t("vectorWorkbench.loadCollectionsFailed"));
     } finally {
@@ -127,7 +128,10 @@ export default function VectorWorkbench() {
               {t("vectorWorkbench.localDesc")}
             </div>
             <div className="mt-3 flex gap-2">
-              <Button variant="outline" onClick={() => void refreshCollections()}>
+              <Button
+                variant="outline"
+                onClick={() => void refreshCollections()}
+              >
                 {t("vectorWorkbench.refresh")}
               </Button>
             </div>
@@ -140,7 +144,10 @@ export default function VectorWorkbench() {
               {t("vectorWorkbench.milvusDesc")}
             </div>
             <div className="mt-3 flex gap-2">
-              <Button variant="outline" onClick={() => void refreshMilvusDataSources()}>
+              <Button
+                variant="outline"
+                onClick={() => void refreshMilvusDataSources()}
+              >
                 {t("vectorWorkbench.refresh")}
               </Button>
             </div>
@@ -180,7 +187,10 @@ export default function VectorWorkbench() {
                 </TabsList>
               </div>
 
-              <TabsContent value="collections" className="flex-1 overflow-hidden">
+              <TabsContent
+                value="collections"
+                className="flex-1 overflow-hidden"
+              >
                 <ScrollArea className="h-full p-4">
                   <div className="grid gap-3">
                     <div className="grid gap-2">
@@ -200,7 +210,9 @@ export default function VectorWorkbench() {
                           value={createDim}
                           min={1}
                           max={4096}
-                          onChange={e => setCreateDim(Number(e.target.value || 1536))}
+                          onChange={e =>
+                            setCreateDim(Number(e.target.value || 1536))
+                          }
                         />
                       </div>
                       <Button
@@ -233,7 +245,9 @@ export default function VectorWorkbench() {
                         onValueChange={setSelectedCollection}
                       >
                         <SelectTrigger size="sm" className="w-full font-mono">
-                          <SelectValue placeholder={t("vectorWorkbench.noCollection")} />
+                          <SelectValue
+                            placeholder={t("vectorWorkbench.noCollection")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {collections.map(c => (
@@ -246,8 +260,9 @@ export default function VectorWorkbench() {
                       <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap">
                         {selectedCollection
                           ? JSON.stringify(
-                              collections.find(c => c.name === selectedCollection) ??
-                                null,
+                              collections.find(
+                                c => c.name === selectedCollection
+                              ) ?? null,
                               null,
                               2
                             )
@@ -275,7 +290,8 @@ export default function VectorWorkbench() {
                         if (!selectedCollection) return;
                         try {
                           const parsed = JSON.parse(upsertJson) as unknown;
-                          if (!Array.isArray(parsed)) throw new Error("invalid");
+                          if (!Array.isArray(parsed))
+                            throw new Error("invalid");
                           const points = parsed as {
                             id: string;
                             vector: number[];
@@ -328,7 +344,9 @@ export default function VectorWorkbench() {
                           value={searchTopK}
                           min={1}
                           max={100}
-                          onChange={e => setSearchTopK(Number(e.target.value || 10))}
+                          onChange={e =>
+                            setSearchTopK(Number(e.target.value || 10))
+                          }
                         />
                       </div>
                       <div className="grid gap-2">
@@ -358,8 +376,11 @@ export default function VectorWorkbench() {
                         onClick={async () => {
                           if (!selectedCollection) return;
                           try {
-                            const vector = JSON.parse(searchVectorJson) as number[];
-                            if (!Array.isArray(vector)) throw new Error("invalid");
+                            const vector = JSON.parse(
+                              searchVectorJson
+                            ) as number[];
+                            if (!Array.isArray(vector))
+                              throw new Error("invalid");
                             const res = await searchVector({
                               collection: selectedCollection,
                               vector: vector.map(Number),
@@ -419,7 +440,9 @@ export default function VectorWorkbench() {
             onListCollections={async () => {
               if (!milvusSelectedId) return;
               try {
-                const res = await listMilvusCollections({ dataSourceId: milvusSelectedId });
+                const res = await listMilvusCollections({
+                  dataSourceId: milvusSelectedId,
+                });
                 setMilvusCollections(res.collections);
                 setMilvusRaw(res.raw);
                 toast.success(t("vectorWorkbench.milvusListOk"));
@@ -441,7 +464,10 @@ function getApiErrorMessage(e: unknown): string | null {
   const bodyText = e.bodyText ?? "";
   if (!bodyText) return e.message;
   try {
-    const parsed = JSON.parse(bodyText) as { message?: unknown; error?: unknown };
+    const parsed = JSON.parse(bodyText) as {
+      message?: unknown;
+      error?: unknown;
+    };
     if (typeof parsed.message === "string" && parsed.message.trim()) {
       return parsed.message;
     }
@@ -477,10 +503,18 @@ function MilvusPanel(props: {
           {t("vectorWorkbench.milvusPanel")}
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setCreateOpen(true)}
+          >
             {t("vectorWorkbench.addMilvus")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => void props.onRefreshDataSources()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void props.onRefreshDataSources()}
+          >
             {t("vectorWorkbench.refresh")}
           </Button>
         </div>
@@ -531,11 +565,17 @@ function MilvusPanel(props: {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={submitting}>
+              <Button
+                variant="outline"
+                onClick={() => setCreateOpen(false)}
+                disabled={submitting}
+              >
                 {t("database.cancel")}
               </Button>
               <Button
-                disabled={submitting || !name.trim() || !baseUrl.trim() || !token.trim()}
+                disabled={
+                  submitting || !name.trim() || !baseUrl.trim() || !token.trim()
+                }
                 onClick={async () => {
                   setSubmitting(true);
                   try {
@@ -552,7 +592,9 @@ function MilvusPanel(props: {
                     setCreateOpen(false);
                     await props.onRefreshDataSources();
                   } catch (e) {
-                    const msg = getApiErrorMessage(e) ?? t("dataSourceManager.createFailed");
+                    const msg =
+                      getApiErrorMessage(e) ??
+                      t("dataSourceManager.createFailed");
                     toast.error(msg);
                   } finally {
                     setSubmitting(false);
@@ -570,7 +612,10 @@ function MilvusPanel(props: {
         <Label className="text-xs text-muted-foreground">
           {t("vectorWorkbench.milvusDataSource")}
         </Label>
-        <Select value={props.selectedId} onValueChange={props.onSelectedIdChange}>
+        <Select
+          value={props.selectedId}
+          onValueChange={props.onSelectedIdChange}
+        >
           <SelectTrigger size="sm" className="mt-2 w-full font-mono">
             <SelectValue placeholder={t("vectorWorkbench.noMilvus")} />
           </SelectTrigger>

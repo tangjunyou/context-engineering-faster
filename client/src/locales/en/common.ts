@@ -122,7 +122,8 @@ const common = {
     localDesc:
       "Create and manage SQLite databases inside the app data directory, suitable for schema, import, and SQL variables.",
     externalTitle: "External Database Connection",
-    externalDesc: "Connect Postgres/MySQL and other external databases (advanced).",
+    externalDesc:
+      "Connect Postgres/MySQL and other external databases (advanced).",
     createLocal: "Create built-in database",
     createLocalHint:
       "After creation, you can browse tables and generate SQL variables in one click.",
@@ -344,7 +345,8 @@ const common = {
     milvusListOk: "Loaded",
     milvusListFailed: "Load failed (feature may be disabled)",
     addMilvus: "Add Milvus data source",
-    addMilvusHint: "Token is stored encrypted locally and is not displayed back.",
+    addMilvusHint:
+      "Token is stored encrypted locally and is not displayed back.",
     baseUrl: "Base URL",
     token: "Token",
   },

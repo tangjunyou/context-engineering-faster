@@ -134,7 +134,13 @@ export default function DatabaseWorkbench() {
         setRows([]);
       }
     })();
-  }, [qbValueColumn, selectedDataSource?.driver, selectedDataSource?.id, selectedTable, t]);
+  }, [
+    qbValueColumn,
+    selectedDataSource?.driver,
+    selectedDataSource?.id,
+    selectedTable,
+    t,
+  ]);
 
   const headerCards = (
     <div className="grid gap-3 md:grid-cols-2">
@@ -153,7 +159,9 @@ export default function DatabaseWorkbench() {
         </div>
       </div>
       <div className="rounded-lg border border-border bg-card p-4">
-        <div className="text-sm font-semibold">{t("database.externalTitle")}</div>
+        <div className="text-sm font-semibold">
+          {t("database.externalTitle")}
+        </div>
         <div className="mt-1 text-xs text-muted-foreground">
           {t("database.externalDesc")}
         </div>
@@ -172,7 +180,9 @@ export default function DatabaseWorkbench() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("database.createLocal")}</DialogTitle>
-            <DialogDescription>{t("database.createLocalHint")}</DialogDescription>
+            <DialogDescription>
+              {t("database.createLocalHint")}
+            </DialogDescription>
           </DialogHeader>
           <CreateLocalDbForm
             onCancel={() => setCreateLocalOpen(false)}
@@ -239,7 +249,9 @@ export default function DatabaseWorkbench() {
         <div className="flex-1 grid gap-4 lg:grid-cols-[360px_1fr] overflow-hidden">
           <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <div className="text-sm font-semibold">{t("database.catalog")}</div>
+              <div className="text-sm font-semibold">
+                {t("database.catalog")}
+              </div>
               <Button
                 size="sm"
                 variant="outline"
@@ -364,7 +376,10 @@ export default function DatabaseWorkbench() {
                       <Label className="text-xs text-muted-foreground">
                         {t("database.valueColumn")}
                       </Label>
-                      <Select value={qbValueColumn} onValueChange={setQbValueColumn}>
+                      <Select
+                        value={qbValueColumn}
+                        onValueChange={setQbValueColumn}
+                      >
                         <SelectTrigger size="sm" className="w-full font-mono">
                           <SelectValue />
                         </SelectTrigger>
@@ -383,12 +398,19 @@ export default function DatabaseWorkbench() {
                         {t("database.where")}
                       </Label>
                       <div className="grid grid-cols-2 gap-2">
-                        <Select value={qbWhereColumn} onValueChange={setQbWhereColumn}>
+                        <Select
+                          value={qbWhereColumn}
+                          onValueChange={setQbWhereColumn}
+                        >
                           <SelectTrigger size="sm" className="w-full font-mono">
-                            <SelectValue placeholder={t("database.whereColumn")} />
+                            <SelectValue
+                              placeholder={t("database.whereColumn")}
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">{t("database.noWhere")}</SelectItem>
+                            <SelectItem value="">
+                              {t("database.noWhere")}
+                            </SelectItem>
                             {columns.map(c => (
                               <SelectItem key={c.name} value={c.name}>
                                 {c.name}
@@ -416,7 +438,12 @@ export default function DatabaseWorkbench() {
                         min={1}
                         max={1000}
                         onChange={e =>
-                          setQbLimit(Math.max(1, Math.min(1000, Number(e.target.value || 10))))
+                          setQbLimit(
+                            Math.max(
+                              1,
+                              Math.min(1000, Number(e.target.value || 10))
+                            )
+                          )
                         }
                       />
                     </div>
@@ -439,7 +466,11 @@ export default function DatabaseWorkbench() {
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
-                        disabled={!selectedDataSource || !selectedTable || !qbValueColumn}
+                        disabled={
+                          !selectedDataSource ||
+                          !selectedTable ||
+                          !qbValueColumn
+                        }
                         onClick={async () => {
                           const ds = selectedDataSource;
                           if (!ds) return;
@@ -468,7 +499,11 @@ export default function DatabaseWorkbench() {
                       </Button>
 
                       <Button
-                        disabled={!selectedDataSource || !selectedTable || !qbValueColumn}
+                        disabled={
+                          !selectedDataSource ||
+                          !selectedTable ||
+                          !qbValueColumn
+                        }
                         onClick={() => {
                           const ds = selectedDataSource;
                           if (!ds) return;
@@ -526,7 +561,10 @@ function getApiErrorMessage(e: unknown): string | null {
   const bodyText = e.bodyText ?? "";
   if (!bodyText) return e.message;
   try {
-    const parsed = JSON.parse(bodyText) as { message?: unknown; error?: unknown };
+    const parsed = JSON.parse(bodyText) as {
+      message?: unknown;
+      error?: unknown;
+    };
     if (typeof parsed.message === "string" && parsed.message.trim()) {
       return parsed.message;
     }
@@ -568,7 +606,9 @@ function CreateLocalDbForm(props: {
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
-  const [template, setTemplate] = useState<"empty" | "documents" | "kv">("documents");
+  const [template, setTemplate] = useState<"empty" | "documents" | "kv">(
+    "documents"
+  );
   const [submitting, setSubmitting] = useState(false);
 
   return (
@@ -589,19 +629,28 @@ function CreateLocalDbForm(props: {
         <Label className="text-xs text-muted-foreground">
           {t("database.template")}
         </Label>
-        <Select value={template} onValueChange={v => setTemplate(v as typeof template)}>
+        <Select
+          value={template}
+          onValueChange={v => setTemplate(v as typeof template)}
+        >
           <SelectTrigger size="sm" className="w-full font-mono">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="documents">{t("database.templateDocuments")}</SelectItem>
+            <SelectItem value="documents">
+              {t("database.templateDocuments")}
+            </SelectItem>
             <SelectItem value="kv">{t("database.templateKv")}</SelectItem>
             <SelectItem value="empty">{t("database.templateEmpty")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={props.onCancel} disabled={submitting}>
+        <Button
+          variant="outline"
+          onClick={props.onCancel}
+          disabled={submitting}
+        >
           {t("database.cancel")}
         </Button>
         <Button
@@ -609,11 +658,14 @@ function CreateLocalDbForm(props: {
           onClick={async () => {
             setSubmitting(true);
             try {
-              const ds = await createLocalSqliteDataSource({ name: name.trim() });
+              const ds = await createLocalSqliteDataSource({
+                name: name.trim(),
+              });
               toast.success(t("dataSourceManager.created"));
               props.onCreated(ds, template);
             } catch (e) {
-              const msg = getApiErrorMessage(e) ?? t("dataSourceManager.createFailed");
+              const msg =
+                getApiErrorMessage(e) ?? t("dataSourceManager.createFailed");
               toast.error(msg);
             } finally {
               setSubmitting(false);
@@ -654,7 +706,10 @@ function CreateExternalDbForm(props: {
         <Label className="text-xs text-muted-foreground">
           {t("dataSourceManager.driver")}
         </Label>
-        <Select value={driver} onValueChange={v => setDriver(v as typeof driver)}>
+        <Select
+          value={driver}
+          onValueChange={v => setDriver(v as typeof driver)}
+        >
           <SelectTrigger size="sm" className="w-full font-mono">
             <SelectValue />
           </SelectTrigger>
@@ -681,7 +736,11 @@ function CreateExternalDbForm(props: {
         />
       </div>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={props.onCancel} disabled={submitting}>
+        <Button
+          variant="outline"
+          onClick={props.onCancel}
+          disabled={submitting}
+        >
           {t("database.cancel")}
         </Button>
         <Button
@@ -701,7 +760,8 @@ function CreateExternalDbForm(props: {
               toast.success(t("dataSourceManager.created"));
               props.onCreated(ds);
             } catch (e) {
-              const msg = getApiErrorMessage(e) ?? t("dataSourceManager.createFailed");
+              const msg =
+                getApiErrorMessage(e) ?? t("dataSourceManager.createFailed");
               toast.error(msg);
             } finally {
               setSubmitting(false);

@@ -16,7 +16,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { BrainCircuit, Database, Layers, ListChecks, PanelLeft } from "lucide-react";
+import {
+  BrainCircuit,
+  Database,
+  Layers,
+  ListChecks,
+  PanelLeft,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ProjectManagerDialog } from "@/components/ProjectManagerDialog";
 import { useTranslation } from "react-i18next";
@@ -37,7 +43,9 @@ export default function WorkbenchLayout(props: {
   }));
 
   const projectLabel = useMemo(() => {
-    const idText = projectId ? ` (${projectId})` : ` (${t("projects.notSaved")})`;
+    const idText = projectId
+      ? ` (${projectId})`
+      : ` (${t("projects.notSaved")})`;
     return `${t("app.projectLabel", { name: projectName })}${idText}`;
   }, [projectId, projectName, t]);
 
@@ -123,7 +131,10 @@ export default function WorkbenchLayout(props: {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip={t("workbench.evaluation")}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={t("workbench.evaluation")}
+                  >
                     <Link to="/workbench/evaluation">
                       <ListChecks className="h-4 w-4" />
                       <span>{t("workbench.evaluation")}</span>
