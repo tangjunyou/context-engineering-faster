@@ -90,6 +90,31 @@ export type ColumnInfo = {
 
 export type SqliteRow = Record<string, unknown>;
 
+export type DataSourceCapabilities = {
+  id: string;
+  driver: string;
+  resolver: string;
+  allowImport: boolean;
+  allowWrite: boolean;
+  allowSchema: boolean;
+  allowDelete: boolean;
+  supportsTables: boolean;
+  supportsColumns: boolean;
+  supportsSqlQuery: boolean;
+  supportsCsvImport: boolean;
+  supportsSqliteRowsApi: boolean;
+  supportsMilvusCollections: boolean;
+  supportsMilvusOps: boolean;
+};
+
+export async function getDataSourceCapabilities(input: {
+  dataSourceId: string;
+}): Promise<DataSourceCapabilities> {
+  return requestJson<DataSourceCapabilities>(
+    `/api/datasources/${input.dataSourceId}/capabilities`
+  );
+}
+
 export async function listSqliteTableRows(input: {
   dataSourceId: string;
   table: string;
@@ -170,6 +195,21 @@ export async function listTableColumns(input: {
   );
 }
 
+export async function previewTableRows(input: {
+  dataSourceId: string;
+  table: string;
+  limit?: number;
+}): Promise<{ rows: Record<string, unknown>[] }> {
+  const url = new URL(
+    `/api/datasources/${input.dataSourceId}/tables/${encodeURIComponent(
+      input.table
+    )}/preview`,
+    window.location.origin
+  );
+  if (input.limit != null) url.searchParams.set("limit", String(input.limit));
+  return requestJson<{ rows: Record<string, unknown>[] }>(url.pathname + url.search);
+}
+
 export async function listNeo4jLabels(input: {
   dataSourceId: string;
 }): Promise<{ labels: string[] }> {
@@ -184,4 +224,37 @@ export async function listMilvusCollections(input: {
   return requestJson<{ collections: string[]; raw: unknown }>(
     `/api/datasources/${input.dataSourceId}/milvus/collections`
   );
+}
+
+export async function milvusInsert(input: {
+  dataSourceId: string;
+  body: unknown;
+}): Promise<unknown> {
+  return requestJson<unknown>(`/api/datasources/${input.dataSourceId}/milvus/insert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input.body),
+  });
+}
+
+export async function milvusSearch(input: {
+  dataSourceId: string;
+  body: unknown;
+}): Promise<unknown> {
+  return requestJson<unknown>(`/api/datasources/${input.dataSourceId}/milvus/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input.body),
+  });
+}
+
+export async function milvusQuery(input: {
+  dataSourceId: string;
+  body: unknown;
+}): Promise<unknown> {
+  return requestJson<unknown>(`/api/datasources/${input.dataSourceId}/milvus/query`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input.body),
+  });
 }

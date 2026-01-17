@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createProvider,
   deleteProvider,
@@ -31,6 +32,16 @@ export function ModelStudioDialog(props: {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [result, setResult] = useState<unknown>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("siliconflow");
+  const [createApiKey, setCreateApiKey] = useState("");
+  const [createBaseUrl, setCreateBaseUrl] = useState("https://api.siliconflow.cn/v1");
+  const [createChatModel, setCreateChatModel] = useState("deepseek-ai/DeepSeek-V3");
+  const [createEmbeddingModel, setCreateEmbeddingModel] = useState("BAAI/bge-large-zh-v1.5");
+  const [testEmbeddingOpen, setTestEmbeddingOpen] = useState(false);
+  const [testEmbeddingText, setTestEmbeddingText] = useState("你好，世界");
+  const [testChatOpen, setTestChatOpen] = useState(false);
+  const [testChatText, setTestChatText] = useState("用一句话解释向量数据库是什么");
 
   const refresh = async () => {
     setLoading(true);
@@ -49,6 +60,9 @@ export function ModelStudioDialog(props: {
     if (!open) return;
     setResult(null);
     setFilter("");
+    setCreateOpen(false);
+    setTestEmbeddingOpen(false);
+    setTestChatOpen(false);
     void refresh();
   }, [open]);
 
@@ -61,26 +75,12 @@ export function ModelStudioDialog(props: {
   const selected = items.find(p => p.id === selectedId) ?? null;
 
   const handleCreateSiliconFlow = async () => {
-    const name = window.prompt(
-      t("modelStudio.createPromptName"),
-      "siliconflow"
-    );
-    if (!name) return;
-    const apiKey = window.prompt(t("modelStudio.createPromptApiKey"));
-    if (!apiKey) return;
-    const baseUrl = window.prompt(
-      t("modelStudio.createPromptBaseUrl"),
-      "https://api.siliconflow.cn/v1"
-    );
-    if (!baseUrl) return;
-    const chatModel = window.prompt(
-      t("modelStudio.createPromptChatModel"),
-      "deepseek-ai/DeepSeek-V3"
-    );
-    const embModel = window.prompt(
-      t("modelStudio.createPromptEmbeddingModel"),
-      "BAAI/bge-large-zh-v1.5"
-    );
+    const name = createName.trim();
+    const apiKey = createApiKey.trim();
+    const baseUrl = createBaseUrl.trim();
+    const chatModel = createChatModel.trim();
+    const embModel = createEmbeddingModel.trim();
+    if (!name || !apiKey || !baseUrl) return;
     try {
       const created = await createProvider({
         name,
@@ -93,6 +93,7 @@ export function ModelStudioDialog(props: {
       toast.success(t("modelStudio.created"));
       setItems(prev => [created, ...prev]);
       setSelectedId(created.id);
+      setCreateOpen(false);
     } catch {
       toast.error(t("modelStudio.createFailed"));
     }
@@ -114,18 +115,14 @@ export function ModelStudioDialog(props: {
 
   const handleTestEmbeddings = async () => {
     if (!selected) return;
-    const text = window.prompt(
-      t("modelStudio.testEmbeddingPrompt"),
-      "你好，世界"
-    );
-    if (!text) return;
     try {
       const res = await providerEmbeddings({
         providerId: selected.id,
-        input: [text],
+        input: [testEmbeddingText],
       });
       setResult(res);
       toast.success(t("modelStudio.testOk"));
+      setTestEmbeddingOpen(false);
     } catch {
       setResult(null);
       toast.error(t("modelStudio.testFailed"));
@@ -134,20 +131,16 @@ export function ModelStudioDialog(props: {
 
   const handleTestChat = async () => {
     if (!selected) return;
-    const text = window.prompt(
-      t("modelStudio.testChatPrompt"),
-      "用一句话解释向量数据库是什么"
-    );
-    if (!text) return;
     try {
       const res = await providerChatCompletions({
         providerId: selected.id,
         messages: [
-          { role: "user", content: text, createdAt: String(Date.now()) },
+          { role: "user", content: testChatText, createdAt: String(Date.now()) },
         ],
       });
       setResult(res);
       toast.success(t("modelStudio.testOk"));
+      setTestChatOpen(false);
     } catch {
       setResult(null);
       toast.error(t("modelStudio.testFailed"));
@@ -170,11 +163,58 @@ export function ModelStudioDialog(props: {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => void handleCreateSiliconFlow()}
+                onClick={() => setCreateOpen(v => !v)}
               >
                 {t("modelStudio.create")}
               </Button>
             </div>
+            {createOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("modelStudio.create")}
+                </div>
+                <Input
+                  value={createName}
+                  onChange={e => setCreateName(e.target.value)}
+                  placeholder={t("modelStudio.createPromptName")}
+                  className="h-9 font-mono text-xs"
+                />
+                <Input
+                  value={createApiKey}
+                  onChange={e => setCreateApiKey(e.target.value)}
+                  placeholder={t("modelStudio.createPromptApiKey")}
+                  type="password"
+                  className="h-9 font-mono text-xs"
+                />
+                <Input
+                  value={createBaseUrl}
+                  onChange={e => setCreateBaseUrl(e.target.value)}
+                  placeholder={t("modelStudio.createPromptBaseUrl")}
+                  className="h-9 font-mono text-xs"
+                />
+                <Input
+                  value={createChatModel}
+                  onChange={e => setCreateChatModel(e.target.value)}
+                  placeholder={t("modelStudio.createPromptChatModel")}
+                  className="h-9 font-mono text-xs"
+                />
+                <Input
+                  value={createEmbeddingModel}
+                  onChange={e => setCreateEmbeddingModel(e.target.value)}
+                  placeholder={t("modelStudio.createPromptEmbeddingModel")}
+                  className="h-9 font-mono text-xs"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => void handleCreateSiliconFlow()}
+                    disabled={!createName.trim() || !createApiKey.trim() || !createBaseUrl.trim()}
+                  >
+                    {t("modelStudio.create")}
+                  </Button>
+                </div>
+              </div>
+            )}
             <Input
               value={filter}
               onChange={e => setFilter(e.target.value)}
@@ -238,14 +278,14 @@ export function ModelStudioDialog(props: {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => void handleTestEmbeddings()}
+                onClick={() => setTestEmbeddingOpen(v => !v)}
                 disabled={!selected}
               >
                 {t("modelStudio.testEmbedding")}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => void handleTestChat()}
+                onClick={() => setTestChatOpen(v => !v)}
                 disabled={!selected}
               >
                 {t("modelStudio.testChat")}
@@ -258,6 +298,48 @@ export function ModelStudioDialog(props: {
                 {t("modelStudio.delete")}
               </Button>
             </div>
+            {testEmbeddingOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("modelStudio.testEmbedding")}
+                </div>
+                <Textarea
+                  value={testEmbeddingText}
+                  onChange={e => setTestEmbeddingText(e.target.value)}
+                  className="min-h-20 font-mono text-xs"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleTestEmbeddings()}
+                    disabled={!selected || !testEmbeddingText.trim()}
+                  >
+                    {t("modelStudio.testEmbedding")}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {testChatOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("modelStudio.testChat")}
+                </div>
+                <Textarea
+                  value={testChatText}
+                  onChange={e => setTestChatText(e.target.value)}
+                  className="min-h-20 font-mono text-xs"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleTestChat()}
+                    disabled={!selected || !testChatText.trim()}
+                  >
+                    {t("modelStudio.testChat")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-md border border-border p-3">
               <div className="text-xs text-muted-foreground">

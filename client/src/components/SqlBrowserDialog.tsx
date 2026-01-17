@@ -62,6 +62,15 @@ export function SqlBrowserDialog(props: Props) {
   const [attachToSelectedNode, setAttachToSelectedNode] = useState(true);
   const [tableRows, setTableRows] = useState<SqliteRow[] | null>(null);
   const [loadingRows, setLoadingRows] = useState(false);
+  const [createTableOpen, setCreateTableOpen] = useState(false);
+  const [createTableName, setCreateTableName] = useState("");
+  const [createTableColumnsText, setCreateTableColumnsText] = useState(
+    JSON.stringify([{ name: "id", dataType: "INTEGER", nullable: false }], null, 2)
+  );
+  const [insertRowOpen, setInsertRowOpen] = useState(false);
+  const [insertRowText, setInsertRowText] = useState('{"name":"Alice"}');
+  const [deleteRowOpen, setDeleteRowOpen] = useState(false);
+  const [deleteRowIdText, setDeleteRowIdText] = useState("1");
 
   useEffect(() => {
     if (!open) return;
@@ -74,6 +83,15 @@ export function SqlBrowserDialog(props: Props) {
     setAttachToSelectedNode(true);
     setTableRows(null);
     setTableFilter("");
+    setCreateTableOpen(false);
+    setCreateTableName("");
+    setCreateTableColumnsText(
+      JSON.stringify([{ name: "id", dataType: "INTEGER", nullable: false }], null, 2)
+    );
+    setInsertRowOpen(false);
+    setInsertRowText('{"name":"Alice"}');
+    setDeleteRowOpen(false);
+    setDeleteRowIdText("1");
 
     setIsLoading(true);
     listDataSourceTables({ dataSourceId })
@@ -134,16 +152,9 @@ export function SqlBrowserDialog(props: Props) {
   };
 
   const handleCreateTable = async () => {
-    const table = window.prompt(t("sqlBrowser.createTablePrompt"));
+    const table = createTableName.trim();
     if (!table) return;
-    const colsText = window.prompt(
-      t("sqlBrowser.createTableColumnsPrompt"),
-      JSON.stringify(
-        [{ name: "id", dataType: "INTEGER", nullable: false }],
-        null,
-        2
-      )
-    );
+    const colsText = createTableColumnsText.trim();
     if (!colsText) return;
     let cols: { name: string; dataType: string; nullable?: boolean }[] = [];
     try {
@@ -158,6 +169,8 @@ export function SqlBrowserDialog(props: Props) {
       const res = await listDataSourceTables({ dataSourceId });
       setTables(res.tables ?? []);
       setSelectedTable(table);
+      setCreateTableOpen(false);
+      setCreateTableName("");
     } catch {
       toast.error(t("sqlBrowser.tableCreateFailed"));
     }
@@ -185,14 +198,9 @@ export function SqlBrowserDialog(props: Props) {
 
   const handleInsertRow = async () => {
     if (!selectedTable) return;
-    const text = window.prompt(
-      t("sqlBrowser.insertRowPrompt"),
-      '{"name":"Alice"}'
-    );
-    if (!text) return;
     let row: Record<string, unknown>;
     try {
-      row = JSON.parse(text);
+      row = JSON.parse(insertRowText);
     } catch {
       toast.error(t("sqlBrowser.invalidJson"));
       return;
@@ -201,6 +209,7 @@ export function SqlBrowserDialog(props: Props) {
       await insertSqliteTableRow({ dataSourceId, table: selectedTable, row });
       toast.success(t("sqlBrowser.rowInserted"));
       await handleLoadRows();
+      setInsertRowOpen(false);
     } catch {
       toast.error(t("sqlBrowser.rowInsertFailed"));
     }
@@ -208,9 +217,7 @@ export function SqlBrowserDialog(props: Props) {
 
   const handleDeleteRow = async () => {
     if (!selectedTable) return;
-    const text = window.prompt(t("sqlBrowser.deleteRowPrompt"), "1");
-    if (!text) return;
-    const rowId = Number(text);
+    const rowId = Number(deleteRowIdText);
     if (!Number.isFinite(rowId)) {
       toast.error(t("sqlBrowser.invalidNumber"));
       return;
@@ -219,6 +226,7 @@ export function SqlBrowserDialog(props: Props) {
       await deleteSqliteTableRow({ dataSourceId, table: selectedTable, rowId });
       toast.success(t("sqlBrowser.rowDeleted"));
       await handleLoadRows();
+      setDeleteRowOpen(false);
     } catch {
       toast.error(t("sqlBrowser.rowDeleteFailed"));
     }
@@ -269,10 +277,37 @@ export function SqlBrowserDialog(props: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => void handleCreateTable()}
+              onClick={() => setCreateTableOpen(v => !v)}
             >
               {t("sqlBrowser.createTable")}
             </Button>
+            {createTableOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("sqlBrowser.createTable")}
+                </div>
+                <Input
+                  value={createTableName}
+                  onChange={e => setCreateTableName(e.target.value)}
+                  placeholder={t("sqlBrowser.createTablePrompt")}
+                  className="h-9 font-mono text-xs"
+                />
+                <Textarea
+                  value={createTableColumnsText}
+                  onChange={e => setCreateTableColumnsText(e.target.value)}
+                  className="min-h-24 font-mono text-xs"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => void handleCreateTable()}
+                    disabled={!createTableName.trim()}
+                  >
+                    {t("sqlBrowser.createTable")}
+                  </Button>
+                </div>
+              </div>
+            )}
             <Input
               value={tableFilter}
               onChange={e => setTableFilter(e.target.value)}
@@ -427,16 +462,59 @@ export function SqlBrowserDialog(props: Props) {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => void handleInsertRow()}
+                    onClick={() => setInsertRowOpen(v => !v)}
                   >
                     {t("sqlBrowser.insertRow")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => void handleDeleteRow()}
+                    onClick={() => setDeleteRowOpen(v => !v)}
                   >
                     {t("sqlBrowser.deleteRow")}
                   </Button>
+                </div>
+              )}
+              {insertRowOpen && (
+                <div className="rounded-md border border-border p-3 space-y-2">
+                  <div className="text-xs text-muted-foreground">
+                    {t("sqlBrowser.insertRow")}
+                  </div>
+                  <Textarea
+                    value={insertRowText}
+                    onChange={e => setInsertRowText(e.target.value)}
+                    className="min-h-20 font-mono text-xs"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleInsertRow()}
+                      disabled={!insertRowText.trim()}
+                    >
+                      {t("sqlBrowser.insertRow")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {deleteRowOpen && (
+                <div className="rounded-md border border-border p-3 space-y-2">
+                  <div className="text-xs text-muted-foreground">
+                    {t("sqlBrowser.deleteRow")}
+                  </div>
+                  <Input
+                    value={deleteRowIdText}
+                    onChange={e => setDeleteRowIdText(e.target.value)}
+                    className="h-9 font-mono text-xs"
+                    inputMode="numeric"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleDeleteRow()}
+                      disabled={!deleteRowIdText.trim()}
+                    >
+                      {t("sqlBrowser.deleteRow")}
+                    </Button>
+                  </div>
                 </div>
               )}
               {tableRows && (
