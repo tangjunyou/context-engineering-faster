@@ -137,7 +137,11 @@ export function CreateDataSourceDialog(props: {
   const { t } = useTranslation();
   const schema = useMemo(() => createDataSourceSchema(t), [t]);
 
-  const form = useForm<CreateDataSourceFormInput, any, CreateDataSourceFormOutput>({
+  const form = useForm<
+    CreateDataSourceFormInput,
+    any,
+    CreateDataSourceFormOutput
+  >({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
@@ -168,7 +172,9 @@ export function CreateDataSourceDialog(props: {
   const submit = form.handleSubmit(async values => {
     try {
       if (values.driver === "sqlite" && values.sqliteLocal) {
-        const created = await createLocalSqliteDataSource({ name: values.name });
+        const created = await createLocalSqliteDataSource({
+          name: values.name,
+        });
         toast.success(t("dataSourceManager.created"));
         props.onCreated(created);
         props.onOpenChange(false);
@@ -394,7 +400,10 @@ export function CreateDataSourceDialog(props: {
                         <FormItem>
                           <FormLabel className="text-xs">Host</FormLabel>
                           <FormControl>
-                            <Input {...field} className="h-9 font-mono text-xs" />
+                            <Input
+                              {...field}
+                              className="h-9 font-mono text-xs"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -408,7 +417,9 @@ export function CreateDataSourceDialog(props: {
                           <FormLabel className="text-xs">Port</FormLabel>
                           <FormControl>
                             <Input
-                              value={field.value == null ? "" : String(field.value)}
+                              value={
+                                field.value == null ? "" : String(field.value)
+                              }
                               onChange={e => field.onChange(e.target.value)}
                               onBlur={field.onBlur}
                               name={field.name}
@@ -428,7 +439,10 @@ export function CreateDataSourceDialog(props: {
                         <FormItem>
                           <FormLabel className="text-xs">Database</FormLabel>
                           <FormControl>
-                            <Input {...field} className="h-9 font-mono text-xs" />
+                            <Input
+                              {...field}
+                              className="h-9 font-mono text-xs"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -441,7 +455,10 @@ export function CreateDataSourceDialog(props: {
                         <FormItem>
                           <FormLabel className="text-xs">Username</FormLabel>
                           <FormControl>
-                            <Input {...field} className="h-9 font-mono text-xs" />
+                            <Input
+                              {...field}
+                              className="h-9 font-mono text-xs"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

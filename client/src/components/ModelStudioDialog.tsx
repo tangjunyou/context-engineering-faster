@@ -35,13 +35,20 @@ export function ModelStudioDialog(props: {
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("siliconflow");
   const [createApiKey, setCreateApiKey] = useState("");
-  const [createBaseUrl, setCreateBaseUrl] = useState("https://api.siliconflow.cn/v1");
-  const [createChatModel, setCreateChatModel] = useState("deepseek-ai/DeepSeek-V3");
-  const [createEmbeddingModel, setCreateEmbeddingModel] = useState("BAAI/bge-large-zh-v1.5");
+  const [createBaseUrl, setCreateBaseUrl] = useState(
+    "https://api.siliconflow.cn/v1"
+  );
+  const [createChatModel, setCreateChatModel] = useState(
+    "deepseek-ai/DeepSeek-V3"
+  );
+  const [createEmbeddingModel, setCreateEmbeddingModel] = useState(
+    "BAAI/bge-large-zh-v1.5"
+  );
   const [testEmbeddingOpen, setTestEmbeddingOpen] = useState(false);
   const [testEmbeddingText, setTestEmbeddingText] = useState("你好，世界");
   const [testChatOpen, setTestChatOpen] = useState(false);
-  const [testChatText, setTestChatText] = useState("用一句话解释向量数据库是什么");
+  const [testChatText, setTestChatText] =
+    useState("用一句话解释向量数据库是什么");
 
   const refresh = async () => {
     setLoading(true);
@@ -135,7 +142,11 @@ export function ModelStudioDialog(props: {
       const res = await providerChatCompletions({
         providerId: selected.id,
         messages: [
-          { role: "user", content: testChatText, createdAt: String(Date.now()) },
+          {
+            role: "user",
+            content: testChatText,
+            createdAt: String(Date.now()),
+          },
         ],
       });
       setResult(res);
@@ -208,7 +219,11 @@ export function ModelStudioDialog(props: {
                   <Button
                     size="sm"
                     onClick={() => void handleCreateSiliconFlow()}
-                    disabled={!createName.trim() || !createApiKey.trim() || !createBaseUrl.trim()}
+                    disabled={
+                      !createName.trim() ||
+                      !createApiKey.trim() ||
+                      !createBaseUrl.trim()
+                    }
                   >
                     {t("modelStudio.create")}
                   </Button>

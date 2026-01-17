@@ -75,19 +75,16 @@ export default function DataSourceCenter() {
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [previewLimit, setPreviewLimit] = useState("20");
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewRows, setPreviewRows] = useState<Record<string, unknown>[] | null>(
-    null
-  );
+  const [previewRows, setPreviewRows] = useState<
+    Record<string, unknown>[] | null
+  >(null);
 
-  const [sqlBuilderQuery, setSqlBuilderQuery] = useState(
-    "SELECT 1 AS value"
-  );
+  const [sqlBuilderQuery, setSqlBuilderQuery] = useState("SELECT 1 AS value");
   const [sqlBuilderVarName, setSqlBuilderVarName] = useState("sql_value");
   const [sqlBuilderAttach, setSqlBuilderAttach] = useState(true);
   const [sqlBuilderRunning, setSqlBuilderRunning] = useState(false);
-  const [sqlBuilderResult, setSqlBuilderResult] = useState<SqlQueryResponse | null>(
-    null
-  );
+  const [sqlBuilderResult, setSqlBuilderResult] =
+    useState<SqlQueryResponse | null>(null);
 
   const [milvusOp, setMilvusOp] = useState<"search" | "query" | "insert">(
     "search"
@@ -218,7 +215,11 @@ export default function DataSourceCenter() {
       caps.push({ key: "query", label: "查询运行", enabled: true });
       caps.push({ key: "import", label: "CSV 导入", enabled: allowImport });
       caps.push({ key: "write", label: "写入", enabled: allowWrite });
-      caps.push({ key: "schemaWrite", label: "建表/改表", enabled: allowSchema });
+      caps.push({
+        key: "schemaWrite",
+        label: "建表/改表",
+        enabled: allowSchema,
+      });
       caps.push({ key: "delete", label: "删除", enabled: allowDelete });
     } else if (selected.driver === "milvus") {
       caps.push({ key: "collections", label: "Collections", enabled: true });
@@ -296,7 +297,9 @@ export default function DataSourceCenter() {
     if (!selectedNodeId) return;
     const current = nodes.find(n => n.id === selectedNodeId);
     const currentVars = current?.data?.variables ?? [];
-    const nextVars = currentVars.includes(v.id) ? currentVars : [...currentVars, v.id];
+    const nextVars = currentVars.includes(v.id)
+      ? currentVars
+      : [...currentVars, v.id];
     updateNodeData(selectedNodeId, { variables: nextVars });
   };
 
@@ -438,7 +441,8 @@ export default function DataSourceCenter() {
                   {ds.driver} · {ds.id}
                 </div>
                 <div className="mt-1 text-[10px] text-muted-foreground font-mono">
-                  {t("dataSourceManager.resolver")}: {getResolver(ds.driver, ds.id)}
+                  {t("dataSourceManager.resolver")}:{" "}
+                  {getResolver(ds.driver, ds.id)}
                 </div>
               </button>
             ))}
@@ -457,10 +461,15 @@ export default function DataSourceCenter() {
             <div className="max-w-md w-full rounded-md border border-border bg-background/50 p-4 space-y-3">
               <div className="text-sm font-semibold">开始使用数据源</div>
               <div className="text-xs text-muted-foreground">
-                先创建一个 SQLite/Postgres/MySQL/Milvus 数据源，然后在详情页里做数据预览与变量生成。
+                先创建一个 SQLite/Postgres/MySQL/Milvus
+                数据源，然后在详情页里做数据预览与变量生成。
               </div>
               <div className="flex justify-end">
-                <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCreateOpen(true)}
+                >
                   {t("dataSourceManager.new")}
                 </Button>
               </div>
@@ -474,7 +483,8 @@ export default function DataSourceCenter() {
                   {selected.name}
                 </div>
                 <div className="text-[10px] text-muted-foreground font-mono truncate">
-                  {selected.driver} · {selected.id} · updated {selected.updatedAt}
+                  {selected.driver} · {selected.id} · updated{" "}
+                  {selected.updatedAt}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -482,7 +492,9 @@ export default function DataSourceCenter() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setBrowseSqlFor({ id: selected.id, name: selected.name })}
+                    onClick={() =>
+                      setBrowseSqlFor({ id: selected.id, name: selected.name })
+                    }
                   >
                     {t("sqlBrowser.open")}
                   </Button>
@@ -521,7 +533,10 @@ export default function DataSourceCenter() {
             </div>
 
             <div className="flex-1 overflow-hidden">
-              <TabsContent value="overview" className="h-full m-0 p-4 overflow-auto">
+              <TabsContent
+                value="overview"
+                className="h-full m-0 p-4 overflow-auto"
+              >
                 <div className="space-y-3">
                   <div className="rounded-md border border-border bg-background/50 p-3">
                     <div className="text-xs text-muted-foreground">能力</div>
@@ -548,28 +563,32 @@ export default function DataSourceCenter() {
                     </div>
                   </div>
 
-                  {isSqlDriver(selected.driver) && Boolean(selected.allowImport) && (
-                    <div className="rounded-md border border-border bg-background/50 p-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-sm">CSV 导入</div>
-                        <div className="text-xs text-muted-foreground">
-                          将 CSV 导入到指定表（受后端限制与权限开关影响）
+                  {isSqlDriver(selected.driver) &&
+                    Boolean(selected.allowImport) && (
+                      <div className="rounded-md border border-border bg-background/50 p-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm">CSV 导入</div>
+                          <div className="text-xs text-muted-foreground">
+                            将 CSV 导入到指定表（受后端限制与权限开关影响）
+                          </div>
                         </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setImportForId(selected.id)}
+                        >
+                          {t("imports.open")}
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setImportForId(selected.id)}
-                      >
-                        {t("imports.open")}
-                      </Button>
-                    </div>
-                  )}
+                    )}
                 </div>
               </TabsContent>
 
               {isSqlDriver(selected.driver) && (
-                <TabsContent value="explore" className="h-full m-0 p-4 overflow-auto">
+                <TabsContent
+                  value="explore"
+                  className="h-full m-0 p-4 overflow-auto"
+                >
                   <div className="space-y-3">
                     <div className="rounded-md border border-border bg-background/50 p-3 space-y-2">
                       <div className="text-xs text-muted-foreground">
@@ -577,7 +596,9 @@ export default function DataSourceCenter() {
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-2 space-y-1">
-                          <div className="text-xs text-muted-foreground">Table</div>
+                          <div className="text-xs text-muted-foreground">
+                            Table
+                          </div>
                           <Select
                             value={selectedTable}
                             onValueChange={v => setSelectedTable(v)}
@@ -595,7 +616,9 @@ export default function DataSourceCenter() {
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Limit</div>
+                          <div className="text-xs text-muted-foreground">
+                            Limit
+                          </div>
                           <Input
                             value={previewLimit}
                             onChange={e => setPreviewLimit(e.target.value)}
@@ -619,7 +642,9 @@ export default function DataSourceCenter() {
                     <div className="rounded-md border border-border bg-background/50 p-3">
                       <div className="text-xs text-muted-foreground">Rows</div>
                       <pre className="mt-2 text-[11px] leading-5 overflow-auto max-h-[420px]">
-                        {previewRows ? JSON.stringify(previewRows, null, 2) : "（未加载）"}
+                        {previewRows
+                          ? JSON.stringify(previewRows, null, 2)
+                          : "（未加载）"}
                       </pre>
                     </div>
                   </div>
@@ -627,7 +652,10 @@ export default function DataSourceCenter() {
               )}
 
               {isSqlDriver(selected.driver) && (
-                <TabsContent value="builder" className="h-full m-0 p-4 overflow-auto">
+                <TabsContent
+                  value="builder"
+                  className="h-full m-0 p-4 overflow-auto"
+                >
                   <div className="space-y-3">
                     <div className="rounded-md border border-border bg-background/50 p-3 space-y-2">
                       <div className="text-xs text-muted-foreground">
@@ -661,7 +689,9 @@ export default function DataSourceCenter() {
                             size="sm"
                             variant="outline"
                             onClick={() => void handleRunSqlBuilder()}
-                            disabled={sqlBuilderRunning || !sqlBuilderQuery.trim()}
+                            disabled={
+                              sqlBuilderRunning || !sqlBuilderQuery.trim()
+                            }
                           >
                             {sqlBuilderRunning ? "运行中…" : "运行"}
                           </Button>
@@ -669,7 +699,10 @@ export default function DataSourceCenter() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleCreateSqlVariable()}
-                            disabled={!sqlBuilderVarName.trim() || !sqlBuilderQuery.trim()}
+                            disabled={
+                              !sqlBuilderVarName.trim() ||
+                              !sqlBuilderQuery.trim()
+                            }
                           >
                             生成变量
                           </Button>
@@ -696,31 +729,47 @@ export default function DataSourceCenter() {
                 {isSqlDriver(selected.driver) ? (
                   <div className="space-y-3">
                     <div className="rounded-md border border-border bg-background/50 p-3 flex items-center justify-between">
-                      <div className="text-sm">{t("dataSourceManager.allowImport")}</div>
+                      <div className="text-sm">
+                        {t("dataSourceManager.allowImport")}
+                      </div>
                       <Switch
                         checked={Boolean(selected.allowImport)}
-                        onCheckedChange={v => void handleToggle(selected, { allowImport: v })}
+                        onCheckedChange={v =>
+                          void handleToggle(selected, { allowImport: v })
+                        }
                       />
                     </div>
                     <div className="rounded-md border border-border bg-background/50 p-3 flex items-center justify-between">
-                      <div className="text-sm">{t("dataSourceManager.allowWrite")}</div>
+                      <div className="text-sm">
+                        {t("dataSourceManager.allowWrite")}
+                      </div>
                       <Switch
                         checked={Boolean(selected.allowWrite)}
-                        onCheckedChange={v => void handleToggle(selected, { allowWrite: v })}
+                        onCheckedChange={v =>
+                          void handleToggle(selected, { allowWrite: v })
+                        }
                       />
                     </div>
                     <div className="rounded-md border border-border bg-background/50 p-3 flex items-center justify-between">
-                      <div className="text-sm">{t("dataSourceManager.allowSchema")}</div>
+                      <div className="text-sm">
+                        {t("dataSourceManager.allowSchema")}
+                      </div>
                       <Switch
                         checked={Boolean(selected.allowSchema)}
-                        onCheckedChange={v => void handleToggle(selected, { allowSchema: v })}
+                        onCheckedChange={v =>
+                          void handleToggle(selected, { allowSchema: v })
+                        }
                       />
                     </div>
                     <div className="rounded-md border border-border bg-background/50 p-3 flex items-center justify-between">
-                      <div className="text-sm">{t("dataSourceManager.allowDelete")}</div>
+                      <div className="text-sm">
+                        {t("dataSourceManager.allowDelete")}
+                      </div>
                       <Switch
                         checked={Boolean(selected.allowDelete)}
-                        onCheckedChange={v => void handleToggle(selected, { allowDelete: v })}
+                        onCheckedChange={v =>
+                          void handleToggle(selected, { allowDelete: v })
+                        }
                       />
                     </div>
                   </div>
@@ -732,7 +781,10 @@ export default function DataSourceCenter() {
               </TabsContent>
 
               {selected.driver === "milvus" && (
-                <TabsContent value="milvus" className="h-full m-0 p-4 overflow-auto">
+                <TabsContent
+                  value="milvus"
+                  className="h-full m-0 p-4 overflow-auto"
+                >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-muted-foreground">
@@ -756,10 +808,14 @@ export default function DataSourceCenter() {
                     </div>
 
                     <div className="rounded-md border border-border bg-background/50 p-3 space-y-2">
-                      <div className="text-xs text-muted-foreground">Milvus Ops</div>
+                      <div className="text-xs text-muted-foreground">
+                        Milvus Ops
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">Op</div>
+                          <div className="text-xs text-muted-foreground">
+                            Op
+                          </div>
                           <Select
                             value={milvusOp}
                             onValueChange={v =>
@@ -777,7 +833,9 @@ export default function DataSourceCenter() {
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground">变量名</div>
+                          <div className="text-xs text-muted-foreground">
+                            变量名
+                          </div>
                           <Input
                             value={milvusVarName}
                             onChange={e => setMilvusVarName(e.target.value)}
@@ -813,7 +871,9 @@ export default function DataSourceCenter() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleCreateMilvusVariable()}
-                            disabled={!milvusVarName.trim() || !milvusBodyText.trim()}
+                            disabled={
+                              !milvusVarName.trim() || !milvusBodyText.trim()
+                            }
                           >
                             生成变量
                           </Button>

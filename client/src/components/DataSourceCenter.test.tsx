@@ -67,7 +67,9 @@ vi.mock("@/components/ui/tabs", () => ({
 
 vi.mock("@/components/ui/select", () => ({
   Select: ({ children }: any) => <div>{children}</div>,
-  SelectTrigger: ({ children }: any) => <button type="button">{children}</button>,
+  SelectTrigger: ({ children }: any) => (
+    <button type="button">{children}</button>
+  ),
   SelectValue: ({ placeholder }: any) => <span>{placeholder ?? ""}</span>,
   SelectContent: ({ children }: any) => <div>{children}</div>,
   SelectItem: ({ children }: any) => <div>{children}</div>,
@@ -117,10 +119,14 @@ describe("DataSourceCenter", () => {
 
   it("shows empty-state onboarding when there are no datasources", async () => {
     apiSpies.listDataSources.mockResolvedValueOnce([]);
-    const { default: DataSourceCenter } = await import("@/components/DataSourceCenter");
+    const { default: DataSourceCenter } = await import(
+      "@/components/DataSourceCenter"
+    );
     render(<DataSourceCenter />);
     await screen.findByText("开始使用数据源");
-    expect(screen.getAllByText("dataSourceManager.new").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("dataSourceManager.new").length).toBeGreaterThan(
+      0
+    );
   });
 
   it("renders SQL tabs for SQL drivers and Milvus tab for milvus", async () => {
@@ -148,7 +154,9 @@ describe("DataSourceCenter", () => {
         updatedAt: "0",
       },
     ]);
-    const { default: DataSourceCenter } = await import("@/components/DataSourceCenter");
+    const { default: DataSourceCenter } = await import(
+      "@/components/DataSourceCenter"
+    );
     render(<DataSourceCenter />);
 
     await screen.findAllByText("sqlite-demo");
@@ -176,7 +184,9 @@ describe("DataSourceCenter", () => {
         updatedAt: "0",
       },
     ]);
-    const { default: DataSourceCenter } = await import("@/components/DataSourceCenter");
+    const { default: DataSourceCenter } = await import(
+      "@/components/DataSourceCenter"
+    );
     render(<DataSourceCenter />);
 
     await screen.findAllByText("sqlite-demo");
@@ -186,7 +196,9 @@ describe("DataSourceCenter", () => {
     expect(state.variables.length).toBe(1);
     expect(state.variables[0].type).toBe("dynamic");
     expect(state.variables[0].resolver).toBe("sql://ds_sqlite");
-    expect(state.nodes[0].data.variables.includes(state.variables[0].id)).toBe(true);
+    expect(state.nodes[0].data.variables.includes(state.variables[0].id)).toBe(
+      true
+    );
   });
 
   it("creates a Milvus variable and attaches it to selected node", async () => {
@@ -203,7 +215,9 @@ describe("DataSourceCenter", () => {
         updatedAt: "0",
       },
     ]);
-    const { default: DataSourceCenter } = await import("@/components/DataSourceCenter");
+    const { default: DataSourceCenter } = await import(
+      "@/components/DataSourceCenter"
+    );
     render(<DataSourceCenter />);
 
     await screen.findAllByText("milvus-demo");
@@ -213,6 +227,8 @@ describe("DataSourceCenter", () => {
     expect(state.variables.length).toBe(1);
     expect(state.variables[0].type).toBe("dynamic");
     expect(state.variables[0].resolver).toBe("milvus://ds_milvus");
-    expect(state.nodes[0].data.variables.includes(state.variables[0].id)).toBe(true);
+    expect(state.nodes[0].data.variables.includes(state.variables[0].id)).toBe(
+      true
+    );
   });
 });

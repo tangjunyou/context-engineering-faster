@@ -82,7 +82,8 @@ const common = {
     createLocalSqlite: "New Local SQLite",
     localSqlitePrompt: "Enter local SQLite database name",
     sqliteLocal: "Use Local SQLite (managed)",
-    sqliteLocalHint: "Best for beginners and prototypes; stored in app data directory",
+    sqliteLocalHint:
+      "Best for beginners and prototypes; stored in app data directory",
     connectionMode: "Connection Mode",
     connectionModeBuilder: "Guided Setup",
     connectionModeUrl: "Paste URL (Advanced)",

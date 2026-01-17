@@ -76,9 +76,8 @@ export function DatasetCenterDialog(props: {
   const [embedCollection, setEmbedCollection] = useState("");
   const [embedIdField, setEmbedIdField] = useState("id");
   const [embedTextField, setEmbedTextField] = useState("text");
-  const [embedPayloadFieldsText, setEmbedPayloadFieldsText] = useState(
-    '["title","tag"]'
-  );
+  const [embedPayloadFieldsText, setEmbedPayloadFieldsText] =
+    useState('["title","tag"]');
 
   // New State for Creation Flow
   const [isCreating, setIsCreating] = useState(false);
@@ -434,7 +433,9 @@ export function DatasetCenterDialog(props: {
                       </div>
                       <Textarea
                         value={embedPayloadFieldsText}
-                        onChange={e => setEmbedPayloadFieldsText(e.target.value)}
+                        onChange={e =>
+                          setEmbedPayloadFieldsText(e.target.value)
+                        }
                         className="min-h-20 font-mono text-xs"
                       />
                     </div>
