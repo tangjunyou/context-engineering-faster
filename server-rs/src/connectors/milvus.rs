@@ -75,4 +75,25 @@ impl MilvusRestClient {
     pub async fn list_collections(&self) -> anyhow::Result<serde_json::Value> {
         Err(anyhow::anyhow!("milvus feature 未启用"))
     }
+
+    pub async fn insert_entities(
+        &self,
+        _body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
+        Err(anyhow::anyhow!("milvus feature 未启用"))
+    }
+
+    pub async fn search_entities(
+        &self,
+        _body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
+        Err(anyhow::anyhow!("milvus feature 未启用"))
+    }
+
+    pub async fn query_entities(
+        &self,
+        _body: serde_json::Value,
+    ) -> anyhow::Result<serde_json::Value> {
+        Err(anyhow::anyhow!("milvus feature 未启用"))
+    }
 }

@@ -115,6 +115,17 @@ export default function WorkbenchLayout(props: {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={t("workbench.datasources")}
+                  >
+                    <Link to="/workbench/datasources">
+                      <Database className="h-4 w-4" />
+                      <span>{t("workbench.datasources")}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={t("workbench.database")}>
                     <Link to="/workbench/database">
                       <Database className="h-4 w-4" />

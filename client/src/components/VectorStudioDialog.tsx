@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createVectorCollection,
   deleteVectorPoints,
@@ -32,6 +33,35 @@ export function VectorStudioDialog(props: {
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [searchResult, setSearchResult] = useState<unknown>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createDim, setCreateDim] = useState("384");
+  const [upsertOpen, setUpsertOpen] = useState(false);
+  const [upsertText, setUpsertText] = useState(
+    JSON.stringify(
+      [
+        {
+          id: "p1",
+          vector: Array(4).fill(0.1),
+          payload: { tag: "demo" },
+          batchId: "batch_1",
+        },
+      ],
+      null,
+      2
+    )
+  );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchVectorText, setSearchVectorText] = useState(
+    JSON.stringify(Array(4).fill(0.1))
+  );
+  const [searchFilterText, setSearchFilterText] = useState(
+    JSON.stringify({ must: [{ key: "tag", match: { value: "demo" } }] }, null, 2)
+  );
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteFilterText, setDeleteFilterText] = useState(
+    JSON.stringify({ must: [{ key: "tag", match: { value: "demo" } }] }, null, 2)
+  );
 
   const refresh = async () => {
     setLoading(true);
@@ -50,6 +80,12 @@ export function VectorStudioDialog(props: {
     if (!open) return;
     setSearchResult(null);
     setFilter("");
+    setCreateOpen(false);
+    setCreateName("");
+    setCreateDim("384");
+    setUpsertOpen(false);
+    setSearchOpen(false);
+    setDeleteOpen(false);
     void refresh();
   }, [open]);
 
@@ -58,11 +94,9 @@ export function VectorStudioDialog(props: {
   );
 
   const handleCreate = async () => {
-    const name = window.prompt(t("vectorStudio.createPromptName"));
+    const name = createName.trim();
     if (!name) return;
-    const dimText = window.prompt(t("vectorStudio.createPromptDim"), "384");
-    if (!dimText) return;
-    const dimension = Number(dimText);
+    const dimension = Number(createDim);
     if (!Number.isFinite(dimension) || dimension <= 0) {
       toast.error(t("vectorStudio.invalidNumber"));
       return;
@@ -72,6 +106,8 @@ export function VectorStudioDialog(props: {
       toast.success(t("vectorStudio.created"));
       await refresh();
       setSelected(name);
+      setCreateOpen(false);
+      setCreateName("");
     } catch {
       toast.error(t("vectorStudio.createFailed"));
     }
@@ -79,25 +115,9 @@ export function VectorStudioDialog(props: {
 
   const handleUpsert = async () => {
     if (!selected) return;
-    const text = window.prompt(
-      t("vectorStudio.upsertPrompt"),
-      JSON.stringify(
-        [
-          {
-            id: "p1",
-            vector: Array(4).fill(0.1),
-            payload: { tag: "demo" },
-            batchId: "batch_1",
-          },
-        ],
-        null,
-        2
-      )
-    );
-    if (!text) return;
     let points: any[] = [];
     try {
-      points = JSON.parse(text);
+      points = JSON.parse(upsertText);
     } catch {
       toast.error(t("vectorStudio.invalidJson"));
       return;
@@ -105,6 +125,7 @@ export function VectorStudioDialog(props: {
     try {
       const res = await upsertVectorPoints({ collection: selected, points });
       toast.success(t("vectorStudio.upserted", { n: res.upserted }));
+      setUpsertOpen(false);
     } catch {
       toast.error(t("vectorStudio.upsertFailed"));
     }
@@ -112,30 +133,17 @@ export function VectorStudioDialog(props: {
 
   const handleSearch = async () => {
     if (!selected) return;
-    const vecText = window.prompt(
-      t("vectorStudio.searchPromptVector"),
-      JSON.stringify(Array(4).fill(0.1))
-    );
-    if (!vecText) return;
     let vector: number[] = [];
     try {
-      vector = JSON.parse(vecText);
+      vector = JSON.parse(searchVectorText);
     } catch {
       toast.error(t("vectorStudio.invalidJson"));
       return;
     }
-    const filterText = window.prompt(
-      t("vectorStudio.searchPromptFilter"),
-      JSON.stringify(
-        { must: [{ key: "tag", match: { value: "demo" } }] },
-        null,
-        2
-      )
-    );
     let filterObj: VectorFilter | undefined;
-    if (filterText) {
+    if (searchFilterText.trim()) {
       try {
-        filterObj = JSON.parse(filterText);
+        filterObj = JSON.parse(searchFilterText);
       } catch {
         toast.error(t("vectorStudio.invalidJson"));
         return;
@@ -150,6 +158,7 @@ export function VectorStudioDialog(props: {
       });
       setSearchResult(res);
       toast.success(t("vectorStudio.searchOk"));
+      setSearchOpen(false);
     } catch {
       setSearchResult(null);
       toast.error(t("vectorStudio.searchFailed"));
@@ -158,18 +167,9 @@ export function VectorStudioDialog(props: {
 
   const handleDelete = async () => {
     if (!selected) return;
-    const filterText = window.prompt(
-      t("vectorStudio.deletePrompt"),
-      JSON.stringify(
-        { must: [{ key: "tag", match: { value: "demo" } }] },
-        null,
-        2
-      )
-    );
-    if (!filterText) return;
     let filterObj: VectorFilter;
     try {
-      filterObj = JSON.parse(filterText);
+      filterObj = JSON.parse(deleteFilterText);
     } catch {
       toast.error(t("vectorStudio.invalidJson"));
       return;
@@ -180,6 +180,7 @@ export function VectorStudioDialog(props: {
         filter: filterObj,
       });
       toast.success(t("vectorStudio.deleted", { n: res.deleted }));
+      setDeleteOpen(false);
     } catch {
       toast.error(t("vectorStudio.deleteFailed"));
     }
@@ -201,11 +202,40 @@ export function VectorStudioDialog(props: {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => void handleCreate()}
+                onClick={() => setCreateOpen(v => !v)}
               >
                 {t("vectorStudio.create")}
               </Button>
             </div>
+            {createOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("vectorStudio.create")}
+                </div>
+                <Input
+                  value={createName}
+                  onChange={e => setCreateName(e.target.value)}
+                  placeholder={t("vectorStudio.createPromptName")}
+                  className="h-9 font-mono text-xs"
+                />
+                <Input
+                  value={createDim}
+                  onChange={e => setCreateDim(e.target.value)}
+                  placeholder={t("vectorStudio.createPromptDim")}
+                  className="h-9 font-mono text-xs"
+                  inputMode="numeric"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={() => void handleCreate()}
+                    disabled={!createName.trim()}
+                  >
+                    {t("vectorStudio.create")}
+                  </Button>
+                </div>
+              </div>
+            )}
             <Input
               value={filter}
               onChange={e => setFilter(e.target.value)}
@@ -266,26 +296,109 @@ export function VectorStudioDialog(props: {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => void handleUpsert()}
+                onClick={() => setUpsertOpen(v => !v)}
                 disabled={!selected}
               >
                 {t("vectorStudio.upsert")}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => void handleSearch()}
+                onClick={() => setSearchOpen(v => !v)}
                 disabled={!selected}
               >
                 {t("vectorStudio.search")}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => void handleDelete()}
+                onClick={() => setDeleteOpen(v => !v)}
                 disabled={!selected}
               >
                 {t("vectorStudio.delete")}
               </Button>
             </div>
+            {upsertOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("vectorStudio.upsert")}
+                </div>
+                <Textarea
+                  value={upsertText}
+                  onChange={e => setUpsertText(e.target.value)}
+                  className="min-h-28 font-mono text-xs"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleUpsert()}
+                    disabled={!upsertText.trim() || !selected}
+                  >
+                    {t("vectorStudio.upsert")}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {searchOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("vectorStudio.search")}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">
+                      {t("vectorStudio.searchPromptVector")}
+                    </div>
+                    <Textarea
+                      value={searchVectorText}
+                      onChange={e => setSearchVectorText(e.target.value)}
+                      className="min-h-24 font-mono text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">
+                      {t("vectorStudio.searchPromptFilter")}
+                    </div>
+                    <Textarea
+                      value={searchFilterText}
+                      onChange={e => setSearchFilterText(e.target.value)}
+                      className="min-h-24 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleSearch()}
+                    disabled={!selected}
+                  >
+                    {t("vectorStudio.search")}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {deleteOpen && (
+              <div className="rounded-md border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  {t("vectorStudio.delete")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t("vectorStudio.deletePrompt")}
+                </div>
+                <Textarea
+                  value={deleteFilterText}
+                  onChange={e => setDeleteFilterText(e.target.value)}
+                  className="min-h-24 font-mono text-xs"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleDelete()}
+                    disabled={!deleteFilterText.trim() || !selected}
+                  >
+                    {t("vectorStudio.delete")}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-md border border-border p-3">
               <div className="text-xs text-muted-foreground">

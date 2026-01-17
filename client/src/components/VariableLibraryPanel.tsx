@@ -38,6 +38,8 @@ export default function VariableLibraryPanel(props: Props) {
   const [createType, setCreateType] = useState<"static" | "dynamic">("dynamic");
   const [createResolver, setCreateResolver] = useState("");
   const [createValue, setCreateValue] = useState("");
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   const filtered = useMemo(() => {
     const f = filter.trim().toLowerCase();
@@ -173,7 +175,13 @@ export default function VariableLibraryPanel(props: Props) {
 
   const handleQuickRename = async () => {
     if (!projectId || !selectedId || !currentVersion) return;
-    const name = window.prompt("重命名变量", currentVersion.data.name);
+    setRenameValue(currentVersion.data.name);
+    setRenameOpen(true);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!projectId || !selectedId) return;
+    const name = renameValue.trim();
     if (!name) return;
     setIsLoading(true);
     try {
@@ -183,6 +191,7 @@ export default function VariableLibraryPanel(props: Props) {
       setSelected(item);
       toast.success("已更新");
       await refreshList();
+      setRenameOpen(false);
     } catch {
       toast.error("更新失败");
     } finally {
@@ -300,6 +309,31 @@ export default function VariableLibraryPanel(props: Props) {
                 )}
               </div>
             </div>
+            {renameOpen && (
+              <div className="px-3 py-2 border-b border-border bg-muted/10 flex items-center gap-2">
+                <Input
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  className="h-9 font-mono text-xs"
+                  autoComplete="off"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleRenameSubmit()}
+                  disabled={!renameValue.trim() || isLoading}
+                >
+                  保存
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setRenameOpen(false)}
+                >
+                  取消
+                </Button>
+              </div>
+            )}
 
             <div className="flex-1 overflow-hidden grid grid-cols-2">
               <ScrollArea className="h-full border-r border-border">

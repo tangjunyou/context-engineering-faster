@@ -16,6 +16,9 @@ const DataWorkbench = lazy(() => import("@/pages/workbench/DataWorkbench"));
 const VariablesWorkbench = lazy(
   () => import("@/pages/workbench/VariablesWorkbench")
 );
+const DataSourcesWorkbench = lazy(
+  () => import("@/pages/workbench/DataSourcesWorkbench")
+);
 const DatabaseWorkbench = lazy(
   () => import("@/pages/workbench/DatabaseWorkbench")
 );
@@ -60,6 +63,12 @@ const workbenchVariablesRoute = createRoute({
   component: VariablesWorkbench,
 });
 
+const workbenchDataSourcesRoute = createRoute({
+  getParentRoute: () => workbenchRoute,
+  path: "/datasources",
+  component: DataSourcesWorkbench,
+});
+
 const workbenchDatabaseRoute = createRoute({
   getParentRoute: () => workbenchRoute,
   path: "/database",
@@ -84,6 +93,7 @@ const routeTree = rootRoute.addChildren([
     workbenchContextRoute,
     workbenchDataRoute,
     workbenchVariablesRoute,
+    workbenchDataSourcesRoute,
     workbenchDatabaseRoute,
     workbenchVectorRoute,
     workbenchEvaluationRoute,

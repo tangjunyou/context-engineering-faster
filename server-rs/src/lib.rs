@@ -190,16 +190,36 @@ fn build_app_with_state(
                 .put(update_datasource)
                 .delete(delete_datasource),
         )
+        .route(
+            "/datasources/{id}/capabilities",
+            get(get_datasource_capabilities),
+        )
         .route("/datasources/{id}/test", post(test_datasource))
         .route("/datasources/{id}/neo4j/labels", get(list_neo4j_labels))
         .route(
             "/datasources/{id}/milvus/collections",
             get(list_milvus_collections),
         )
+        .route(
+            "/datasources/{id}/milvus/insert",
+            post(milvus_insert_entities),
+        )
+        .route(
+            "/datasources/{id}/milvus/search",
+            post(milvus_search_entities),
+        )
+        .route(
+            "/datasources/{id}/milvus/query",
+            post(milvus_query_entities),
+        )
         .route("/datasources/{id}/tables", get(list_datasource_tables))
         .route(
             "/datasources/{id}/tables/{table}/columns",
             get(list_datasource_table_columns),
+        )
+        .route(
+            "/datasources/{id}/tables/{table}/preview",
+            get(preview_datasource_table_rows),
         )
         .route("/datasources/{id}/import/csv", post(import_csv))
         .route("/imports", get(list_imports))
@@ -3312,25 +3332,256 @@ async fn list_milvus_collections(
         }
     };
 
-    let collections = raw
-        .get("data")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|x| {
-                    x.get("collectionName")
-                        .and_then(|n| n.as_str())
-                        .map(|s| s.to_string())
-                })
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+    let mut collections = Vec::new();
+    if let Some(arr) = raw.get("data").and_then(|v| v.as_array()) {
+        for x in arr {
+            if let Some(name) = x.get("collectionName").and_then(|n| n.as_str()) {
+                collections.push(name.to_string());
+            }
+        }
+    }
+    if collections.is_empty() {
+        if let Some(arr) = raw
+            .get("data")
+            .and_then(|v| v.get("collectionNames"))
+            .and_then(|v| v.as_array())
+        {
+            for x in arr {
+                if let Some(name) = x.as_str() {
+                    collections.push(name.to_string());
+                }
+            }
+        }
+    }
 
     (
         StatusCode::OK,
         Json(MilvusCollectionsResponse { collections, raw }),
     )
         .into_response()
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DataSourceCapabilitiesResponse {
+    id: String,
+    driver: String,
+    resolver: String,
+    allow_import: bool,
+    allow_write: bool,
+    allow_schema: bool,
+    allow_delete: bool,
+    supports_tables: bool,
+    supports_columns: bool,
+    supports_sql_query: bool,
+    supports_csv_import: bool,
+    supports_sqlite_rows_api: bool,
+    supports_milvus_collections: bool,
+    supports_milvus_ops: bool,
+}
+
+async fn get_datasource_capabilities(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> axum::response::Response {
+    let ds = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+
+    let driver = ds.driver.clone();
+    let allow_import = ds.allow_import;
+    let allow_write = ds.allow_write;
+    let allow_schema = ds.allow_schema;
+    let allow_delete = ds.allow_delete;
+
+    let resolver = match driver.as_str() {
+        "milvus" => format!("milvus://{id}"),
+        "neo4j" => format!("neo4j://{id}"),
+        _ => format!("sql://{id}"),
+    };
+
+    let supports_tables = is_sql_driver(&driver);
+    let supports_columns = is_sql_driver(&driver);
+    let supports_sql_query = is_sql_driver(&driver);
+    let supports_csv_import = is_sql_driver(&driver);
+    let supports_sqlite_rows_api = driver == "sqlite";
+    let supports_milvus_collections = driver == "milvus";
+    let supports_milvus_ops = driver == "milvus";
+
+    (
+        StatusCode::OK,
+        Json(DataSourceCapabilitiesResponse {
+            id,
+            driver,
+            resolver,
+            allow_import,
+            allow_write,
+            allow_schema,
+            allow_delete,
+            supports_tables,
+            supports_columns,
+            supports_sql_query,
+            supports_csv_import,
+            supports_sqlite_rows_api,
+            supports_milvus_collections,
+            supports_milvus_ops,
+        }),
+    )
+        .into_response()
+}
+
+async fn milvus_insert_entities(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> axum::response::Response {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+    if driver != "milvus" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+        )
+            .into_response();
+    }
+    let cfg = match decrypt_milvus_config(&state, &id).await {
+        Ok(v) => v,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+    let client = connectors::milvus::MilvusRestClient::new(cfg.base_url, cfg.token);
+    match client.insert_entities(body).await {
+        Ok(v) => (StatusCode::OK, Json(v)).into_response(),
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains("feature") && msg.contains("未启用") {
+                return (
+                    StatusCode::NOT_IMPLEMENTED,
+                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                )
+                    .into_response();
+            }
+            (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "request_failed", "message": msg }))).into_response()
+        }
+    }
+}
+
+async fn milvus_search_entities(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> axum::response::Response {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+    if driver != "milvus" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+        )
+            .into_response();
+    }
+    let cfg = match decrypt_milvus_config(&state, &id).await {
+        Ok(v) => v,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+    let client = connectors::milvus::MilvusRestClient::new(cfg.base_url, cfg.token);
+    match client.search_entities(body).await {
+        Ok(v) => (StatusCode::OK, Json(v)).into_response(),
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains("feature") && msg.contains("未启用") {
+                return (
+                    StatusCode::NOT_IMPLEMENTED,
+                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                )
+                    .into_response();
+            }
+            (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "request_failed", "message": msg }))).into_response()
+        }
+    }
+}
+
+async fn milvus_query_entities(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> axum::response::Response {
+    let driver = match load_datasource(&state, &id).await {
+        Ok(ds) => ds.driver,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+    if driver != "milvus" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": driver })),
+        )
+            .into_response();
+    }
+    let cfg = match decrypt_milvus_config(&state, &id).await {
+        Ok(v) => v,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+    let client = connectors::milvus::MilvusRestClient::new(cfg.base_url, cfg.token);
+    match client.query_entities(body).await {
+        Ok(v) => (StatusCode::OK, Json(v)).into_response(),
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains("feature") && msg.contains("未启用") {
+                return (
+                    StatusCode::NOT_IMPLEMENTED,
+                    Json(serde_json::json!({ "error": "feature_not_enabled", "feature": "milvus" })),
+                )
+                    .into_response();
+            }
+            (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "request_failed", "message": msg }))).into_response()
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -3449,6 +3700,71 @@ async fn list_datasource_table_columns(
     };
 
     (StatusCode::OK, Json(ColumnListResponse { columns })).into_response()
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PreviewRowsResponse {
+    rows: Vec<std::collections::HashMap<String, serde_json::Value>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PreviewRowsQuery {
+    limit: Option<u32>,
+}
+
+async fn preview_datasource_table_rows(
+    State(state): State<AppState>,
+    Path((id, table)): Path<(String, String)>,
+    axum::extract::Query(q): axum::extract::Query<PreviewRowsQuery>,
+) -> axum::response::Response {
+    let stored = match load_datasource(&state, &id).await {
+        Ok(ds) => ds,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": "not_found", "id": id })),
+            )
+                .into_response();
+        }
+    };
+    if !is_sql_driver(&stored.driver) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "unsupported_driver", "driver": stored.driver })),
+        )
+            .into_response();
+    }
+    if !is_safe_table_name(&table) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "invalid_table", "table": table })),
+        )
+            .into_response();
+    }
+
+    let url = match decrypt_datasource_url(&state, &id).await {
+        Ok(url) => url,
+        Err(err) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "decrypt_failed", "message": err.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let limit = q.limit.unwrap_or(50).clamp(1, 200) as i64;
+    let query = format!("SELECT * FROM {table}");
+    match query_any_rows(&url, &query, limit).await {
+        Ok(rows) => (StatusCode::OK, Json(PreviewRowsResponse { rows })).into_response(),
+        Err(err) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "query_failed", "message": err.to_string() })),
+        )
+            .into_response(),
+    }
 }
 
 fn is_sql_driver(driver: &str) -> bool {

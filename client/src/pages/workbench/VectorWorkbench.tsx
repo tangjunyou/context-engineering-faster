@@ -1,12 +1,5 @@
 import WorkbenchLayout from "@/components/WorkbenchLayout";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,16 +21,10 @@ import {
   type VectorCollection,
   type VectorFilter,
 } from "@/lib/api/vector";
-import {
-  createDataSource,
-  listDataSources,
-  listMilvusCollections,
-  type DataSource,
-} from "@/lib/api/datasources";
-import { ApiError } from "@/lib/api/types";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 
 export default function VectorWorkbench() {
   const { t } = useTranslation();
@@ -96,26 +83,6 @@ export default function VectorWorkbench() {
     };
   }, [filterKey, filterValue]);
 
-  const [milvusDataSources, setMilvusDataSources] = useState<DataSource[]>([]);
-  const [milvusSelectedId, setMilvusSelectedId] = useState("");
-  const [milvusCollections, setMilvusCollections] = useState<string[]>([]);
-  const [milvusRaw, setMilvusRaw] = useState<unknown>(null);
-
-  const refreshMilvusDataSources = async () => {
-    try {
-      const all = await listDataSources();
-      const list = all.filter(ds => ds.driver === "milvus");
-      setMilvusDataSources(list);
-      if (!milvusSelectedId && list[0]?.id) setMilvusSelectedId(list[0].id);
-    } catch {
-      setMilvusDataSources([]);
-    }
-  };
-
-  useEffect(() => {
-    void refreshMilvusDataSources();
-  }, []);
-
   return (
     <WorkbenchLayout title={t("workbench.vector")}>
       <div className="h-full p-4 flex flex-col gap-4 overflow-hidden">
@@ -144,17 +111,14 @@ export default function VectorWorkbench() {
               {t("vectorWorkbench.milvusDesc")}
             </div>
             <div className="mt-3 flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => void refreshMilvusDataSources()}
-              >
-                {t("vectorWorkbench.refresh")}
+              <Button variant="outline" asChild>
+                <Link to="/workbench/datasources">打开数据源中心</Link>
               </Button>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 grid gap-4 lg:grid-cols-2 overflow-hidden">
+        <div className="flex-1 overflow-hidden">
           <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between gap-2">
               <div className="text-sm font-semibold">
@@ -429,241 +393,8 @@ export default function VectorWorkbench() {
               </TabsContent>
             </Tabs>
           </div>
-
-          <MilvusPanel
-            milvusDataSources={milvusDataSources}
-            selectedId={milvusSelectedId}
-            onSelectedIdChange={setMilvusSelectedId}
-            collections={milvusCollections}
-            raw={milvusRaw}
-            onRefreshDataSources={refreshMilvusDataSources}
-            onListCollections={async () => {
-              if (!milvusSelectedId) return;
-              try {
-                const res = await listMilvusCollections({
-                  dataSourceId: milvusSelectedId,
-                });
-                setMilvusCollections(res.collections);
-                setMilvusRaw(res.raw);
-                toast.success(t("vectorWorkbench.milvusListOk"));
-              } catch {
-                setMilvusCollections([]);
-                setMilvusRaw(null);
-                toast.error(t("vectorWorkbench.milvusListFailed"));
-              }
-            }}
-          />
         </div>
       </div>
     </WorkbenchLayout>
-  );
-}
-
-function getApiErrorMessage(e: unknown): string | null {
-  if (!(e instanceof ApiError)) return null;
-  const bodyText = e.bodyText ?? "";
-  if (!bodyText) return e.message;
-  try {
-    const parsed = JSON.parse(bodyText) as {
-      message?: unknown;
-      error?: unknown;
-    };
-    if (typeof parsed.message === "string" && parsed.message.trim()) {
-      return parsed.message;
-    }
-    if (typeof parsed.error === "string" && parsed.error.trim()) {
-      return parsed.error;
-    }
-  } catch {
-    return bodyText;
-  }
-  return e.message;
-}
-
-function MilvusPanel(props: {
-  milvusDataSources: DataSource[];
-  selectedId: string;
-  onSelectedIdChange: (id: string) => void;
-  collections: string[];
-  raw: unknown;
-  onRefreshDataSources: () => Promise<void>;
-  onListCollections: () => Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [token, setToken] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col">
-      <div className="p-4 border-b border-border flex items-center justify-between gap-2">
-        <div className="text-sm font-semibold">
-          {t("vectorWorkbench.milvusPanel")}
-        </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setCreateOpen(true)}
-          >
-            {t("vectorWorkbench.addMilvus")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void props.onRefreshDataSources()}
-          >
-            {t("vectorWorkbench.refresh")}
-          </Button>
-        </div>
-      </div>
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("vectorWorkbench.addMilvus")}</DialogTitle>
-            <DialogDescription>
-              {t("vectorWorkbench.addMilvusHint")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">
-                {t("dataSourceManager.name")}
-              </Label>
-              <Input
-                className="h-9 font-mono text-xs"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">
-                {t("vectorWorkbench.baseUrl")}
-              </Label>
-              <Input
-                className="h-9 font-mono text-xs"
-                value={baseUrl}
-                onChange={e => setBaseUrl(e.target.value)}
-                autoComplete="off"
-                placeholder="http://localhost:19530"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">
-                {t("vectorWorkbench.token")}
-              </Label>
-              <Input
-                className="h-9 font-mono text-xs"
-                type="password"
-                value={token}
-                onChange={e => setToken(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setCreateOpen(false)}
-                disabled={submitting}
-              >
-                {t("database.cancel")}
-              </Button>
-              <Button
-                disabled={
-                  submitting || !name.trim() || !baseUrl.trim() || !token.trim()
-                }
-                onClick={async () => {
-                  setSubmitting(true);
-                  try {
-                    await createDataSource({
-                      name: name.trim(),
-                      driver: "milvus",
-                      url: baseUrl.trim(),
-                      token: token.trim(),
-                    });
-                    toast.success(t("dataSourceManager.created"));
-                    setName("");
-                    setBaseUrl("");
-                    setToken("");
-                    setCreateOpen(false);
-                    await props.onRefreshDataSources();
-                  } catch (e) {
-                    const msg =
-                      getApiErrorMessage(e) ??
-                      t("dataSourceManager.createFailed");
-                    toast.error(msg);
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-              >
-                {t("database.create")}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <div className="p-4 border-b border-border">
-        <Label className="text-xs text-muted-foreground">
-          {t("vectorWorkbench.milvusDataSource")}
-        </Label>
-        <Select
-          value={props.selectedId}
-          onValueChange={props.onSelectedIdChange}
-        >
-          <SelectTrigger size="sm" className="mt-2 w-full font-mono">
-            <SelectValue placeholder={t("vectorWorkbench.noMilvus")} />
-          </SelectTrigger>
-          <SelectContent>
-            {props.milvusDataSources.map(ds => (
-              <SelectItem key={ds.id} value={ds.id}>
-                {ds.name} · {ds.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="mt-3 flex gap-2">
-          <Button
-            variant="outline"
-            disabled={!props.selectedId}
-            onClick={() => void props.onListCollections()}
-          >
-            {t("vectorWorkbench.listCollections")}
-          </Button>
-        </div>
-      </div>
-
-      <ScrollArea className="flex-1 p-4">
-        <div className="text-xs font-semibold text-muted-foreground">
-          {t("vectorWorkbench.collections")}
-        </div>
-        {props.collections.length === 0 ? (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {t("vectorWorkbench.noCollections")}
-          </div>
-        ) : (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {props.collections.map(c => (
-              <div
-                key={c}
-                className="rounded border border-border bg-background/50 px-2 py-1 text-[11px] font-mono"
-              >
-                {c}
-              </div>
-            ))}
-          </div>
-        )}
-        {props.raw ? (
-          <pre className="mt-4 rounded-md border border-border bg-background/50 p-3 text-[11px] font-mono overflow-auto">
-            {JSON.stringify(props.raw, null, 2)}
-          </pre>
-        ) : null}
-      </ScrollArea>
-    </div>
   );
 }

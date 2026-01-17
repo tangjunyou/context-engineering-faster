@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SchemaForm } from "@/components/ui/schema-form";
 import { useStore } from "@/lib/store";
@@ -69,6 +70,15 @@ export function DatasetCenterDialog(props: {
   const [replayLoading, setReplayLoading] = useState(false);
   const [replayResults, setReplayResults] = useState<RunSummary[]>([]);
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
+  const [needSavedProjectHint, setNeedSavedProjectHint] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
+  const [embedProviderId, setEmbedProviderId] = useState("");
+  const [embedCollection, setEmbedCollection] = useState("");
+  const [embedIdField, setEmbedIdField] = useState("id");
+  const [embedTextField, setEmbedTextField] = useState("text");
+  const [embedPayloadFieldsText, setEmbedPayloadFieldsText] = useState(
+    '["title","tag"]'
+  );
 
   // New State for Creation Flow
   const [isCreating, setIsCreating] = useState(false);
@@ -95,6 +105,13 @@ export function DatasetCenterDialog(props: {
     setReplayResults([]);
     setFilter("");
     setTab("preview");
+    setNeedSavedProjectHint(false);
+    setEmbedOpen(false);
+    setEmbedProviderId("");
+    setEmbedCollection("");
+    setEmbedIdField("id");
+    setEmbedTextField("text");
+    setEmbedPayloadFieldsText('["title","tag"]');
     void refresh();
   }, [open]);
 
@@ -163,22 +180,13 @@ export function DatasetCenterDialog(props: {
 
   const handleEmbedToVector = async () => {
     if (!selectedId) return;
-    const providerId = window.prompt(t("datasetCenter.embedPromptProviderId"));
-    if (!providerId) return;
-    const collection = window.prompt(t("datasetCenter.embedPromptCollection"));
-    if (!collection) return;
-    const idField = window.prompt(t("datasetCenter.embedPromptIdField"), "id");
-    if (!idField) return;
-    const textField = window.prompt(
-      t("datasetCenter.embedPromptTextField"),
-      "text"
-    );
-    if (!textField) return;
-    const payloadFieldsText = window.prompt(
-      t("datasetCenter.embedPromptPayloadFields"),
-      '["title","tag"]'
-    );
+    const providerId = embedProviderId.trim();
+    const collection = embedCollection.trim();
+    const idField = embedIdField.trim();
+    const textField = embedTextField.trim();
+    if (!providerId || !collection || !idField || !textField) return;
     let payloadFields: string[] | undefined;
+    const payloadFieldsText = embedPayloadFieldsText.trim();
     if (payloadFieldsText) {
       try {
         payloadFields = JSON.parse(payloadFieldsText);
@@ -197,6 +205,7 @@ export function DatasetCenterDialog(props: {
         payloadFields,
       });
       toast.success(t("datasetCenter.jobCreated", { id: res.job.id }));
+      setEmbedOpen(false);
     } catch {
       toast.error(t("datasetCenter.jobFailed"));
     }
@@ -207,6 +216,8 @@ export function DatasetCenterDialog(props: {
     setTab("replay");
     if (!projectId) {
       toast.error(t("datasetCenter.replayNeedSavedProject"));
+      setNeedSavedProjectHint(true);
+      setTab("preview");
       return;
     }
     setReplayLoading(true);
@@ -344,7 +355,7 @@ export function DatasetCenterDialog(props: {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => void handleEmbedToVector()}
+                    onClick={() => setEmbedOpen(v => !v)}
                     disabled={!selectedId}
                   >
                     {t("datasetCenter.embedToVector")}
@@ -359,6 +370,99 @@ export function DatasetCenterDialog(props: {
                   </Button>
                 </div>
               </div>
+
+              {needSavedProjectHint && (
+                <div className="rounded-md border border-border bg-background/50 p-3 shrink-0">
+                  <div className="text-sm font-semibold">
+                    {t("datasetCenter.replayNeedSavedProject")}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    请先在右上角点击“工程”，保存/创建一个工程后再重试回放。
+                  </div>
+                </div>
+              )}
+
+              {embedOpen && (
+                <div className="rounded-md border border-border bg-background/50 p-3 space-y-3 shrink-0">
+                  <div className="text-xs text-muted-foreground">
+                    {t("datasetCenter.embedToVector")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <div className="text-xs">
+                        {t("datasetCenter.embedPromptProviderId")}
+                      </div>
+                      <Input
+                        value={embedProviderId}
+                        onChange={e => setEmbedProviderId(e.target.value)}
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs">
+                        {t("datasetCenter.embedPromptCollection")}
+                      </div>
+                      <Input
+                        value={embedCollection}
+                        onChange={e => setEmbedCollection(e.target.value)}
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs">
+                        {t("datasetCenter.embedPromptIdField")}
+                      </div>
+                      <Input
+                        value={embedIdField}
+                        onChange={e => setEmbedIdField(e.target.value)}
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs">
+                        {t("datasetCenter.embedPromptTextField")}
+                      </div>
+                      <Input
+                        value={embedTextField}
+                        onChange={e => setEmbedTextField(e.target.value)}
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <div className="text-xs">
+                        {t("datasetCenter.embedPromptPayloadFields")}
+                      </div>
+                      <Textarea
+                        value={embedPayloadFieldsText}
+                        onChange={e => setEmbedPayloadFieldsText(e.target.value)}
+                        className="min-h-20 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEmbedOpen(false)}
+                    >
+                      {t("imports.cancel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        !embedProviderId.trim() ||
+                        !embedCollection.trim() ||
+                        !embedIdField.trim() ||
+                        !embedTextField.trim()
+                      }
+                      onClick={() => void handleEmbedToVector()}
+                    >
+                      {t("datasetCenter.embedToVector")}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <Tabs
                 value={tab}

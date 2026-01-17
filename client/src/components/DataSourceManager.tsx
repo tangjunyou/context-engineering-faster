@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Link } from "@tanstack/react-router";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ImportCsvDialog } from "@/components/ImportCsvDialog";
 import { SqlBrowserDialog } from "@/components/SqlBrowserDialog";
@@ -16,29 +13,12 @@ import { ModelStudioDialog } from "@/components/ModelStudioDialog";
 import { DatasetCenterDialog } from "@/components/DatasetCenterDialog";
 import { JobCenterDialog } from "@/components/JobCenterDialog";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  createDataSource,
-  createLocalSqliteDataSource,
   deleteDataSource,
   listDataSources,
   testDataSource,
   updateDataSource,
 } from "@/lib/api/datasources";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CreateDataSourceDialog } from "@/components/CreateDataSourceDialog";
 
 type DataSource = Awaited<ReturnType<typeof listDataSources>>[number];
 
@@ -46,6 +26,7 @@ export default function DataSourceManager() {
   const { t } = useTranslation();
   const [items, setItems] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [importForId, setImportForId] = useState<string | null>(null);
   const [browseSqlFor, setBrowseSqlFor] = useState<{
     id: string;
@@ -56,24 +37,6 @@ export default function DataSourceManager() {
   const [modelStudioOpen, setModelStudioOpen] = useState(false);
   const [datasetCenterOpen, setDatasetCenterOpen] = useState(false);
   const [jobCenterOpen, setJobCenterOpen] = useState(false);
-
-  const schema = useMemo(
-    () =>
-      z.object({
-        name: z.string().min(1, t("dataSourceManager.validation.nameRequired")),
-        driver: z.enum(["sqlite", "postgres", "mysql"]),
-        url: z.string().min(1, t("dataSourceManager.validation.urlRequired")),
-        allowImport: z.boolean().optional(),
-      }),
-    [t]
-  );
-
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: { name: "", driver: "sqlite", url: "", allowImport: false },
-  });
-
-  const driver = form.watch("driver");
 
   const refresh = async () => {
     setLoading(true);
@@ -90,22 +53,6 @@ export default function DataSourceManager() {
   useEffect(() => {
     void refresh();
   }, []);
-
-  const submit = form.handleSubmit(async values => {
-    try {
-      const created = await createDataSource({
-        name: values.name,
-        driver: values.driver,
-        url: values.url,
-        allowImport: values.allowImport,
-      });
-      toast.success(t("dataSourceManager.created"));
-      setItems(prev => [created, ...prev]);
-      form.reset({ name: "", driver: "sqlite", url: "", allowImport: false });
-    } catch (e) {
-      toast.error(t("dataSourceManager.createFailed"));
-    }
-  });
 
   const handleTest = async (id: string) => {
     try {
@@ -185,17 +132,13 @@ export default function DataSourceManager() {
     }
   };
 
-  const handleCreateLocalSqlite = async () => {
-    const name = window.prompt(t("dataSourceManager.localSqlitePrompt"));
-    if (!name) return;
-    try {
-      const created = await createLocalSqliteDataSource({ name });
-      toast.success(t("dataSourceManager.created"));
-      setItems(prev => [created, ...prev]);
-    } catch {
-      toast.error(t("dataSourceManager.createFailed"));
-    }
-  };
+  const resolverFor = useMemo(() => {
+    return (ds: DataSource) => {
+      if (ds.driver === "milvus") return `milvus://${ds.id}`;
+      if (ds.driver === "neo4j") return `neo4j://${ds.id}`;
+      return `sql://${ds.id}`;
+    };
+  }, []);
 
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
@@ -207,12 +150,15 @@ export default function DataSourceManager() {
         <div className="w-full overflow-hidden">
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex w-max space-x-2 pb-2">
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/workbench/datasources">打开数据源中心</Link>
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => void handleCreateLocalSqlite()}
+                onClick={() => setCreateOpen(true)}
               >
-                {t("dataSourceManager.createLocalSqlite")}
+                {t("dataSourceManager.new")}
               </Button>
               <Button
                 size="sm"
@@ -264,6 +210,11 @@ export default function DataSourceManager() {
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
+          <CreateDataSourceDialog
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+            onCreated={created => setItems(prev => [created, ...prev])}
+          />
           <VectorStudioDialog
             open={vectorStudioOpen}
             onOpenChange={setVectorStudioOpen}
@@ -299,116 +250,6 @@ export default function DataSourceManager() {
               dataSourceName={browseSqlFor.name}
             />
           )}
-          <Form {...form}>
-            <form onSubmit={submit} className="space-y-3">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      {t("dataSourceManager.name")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        className="h-8 font-mono text-xs"
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="driver"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      {t("dataSourceManager.driver")}
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger size="sm" className="w-full font-mono">
-                          <SelectValue placeholder="sqlite" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sqlite">sqlite</SelectItem>
-                          <SelectItem value="postgres">postgres</SelectItem>
-                          <SelectItem value="mysql">mysql</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      {t("dataSourceManager.url")}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        className="h-8 font-mono text-xs"
-                        autoComplete="off"
-                        placeholder={
-                          driver === "sqlite"
-                            ? "data.db"
-                            : "postgres://user:pass@localhost:5432/db"
-                        }
-                      />
-                    </FormControl>
-                    <FormDescription className="text-[10px]">
-                      {driver === "sqlite"
-                        ? t("dataSourceManager.urlHintSqlite")
-                        : t("dataSourceManager.urlHintSql")}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="allowImport"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">
-                      {t("dataSourceManager.allowImport")}
-                    </FormLabel>
-                    <FormControl>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          {t("dataSourceManager.allowImportHint")}
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit" size="sm" disabled={loading}>
-                {t("dataSourceManager.create")}
-              </Button>
-            </form>
-          </Form>
-
           <div className="text-xs text-muted-foreground">
             {t("dataSourceManager.hint")}
           </div>
@@ -457,7 +298,7 @@ export default function DataSourceManager() {
                   {ds.driver} · {ds.id}
                 </div>
                 <div className="mt-1 text-[10px] text-muted-foreground font-mono">
-                  {t("dataSourceManager.resolver")}: sql://{ds.id}
+                  {t("dataSourceManager.resolver")}: {resolverFor(ds)}
                 </div>
                 {(ds.driver === "sqlite" ||
                   ds.driver === "postgres" ||

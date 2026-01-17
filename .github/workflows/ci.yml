@@ -123,6 +123,21 @@ jobs:
             -H 'content-type: application/json' \
             -d '{"nodes":[{"id":"n1","label":"System","kind":"system","content":"Hello {{name}}"}],"variables":[{"id":"v1","name":"name","value":"Alice"}],"outputStyle":"labeled"}' \
             | tr -d '\r' | grep -q '"segments"'
+      - name: Verify datasource center APIs (sqlite)
+        run: |
+          DS_JSON="$(curl -fsS http://127.0.0.1:3000/api/datasources/local/sqlite \
+            -H 'content-type: application/json' \
+            -d '{"name":"ci-sqlite"}')"
+          DS_ID="$(echo "$DS_JSON" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')"
+          test -n "$DS_ID"
+          curl -fsS -X POST "http://127.0.0.1:3000/api/datasources/$DS_ID/import/csv?table=people&header=true" \
+            -H 'content-type: text/csv' \
+            --data-binary $'id,name\n1,Alice\n2,Bob\n' \
+            | tr -d '\r' | grep -q '"insertedRows":2'
+          curl -fsS "http://127.0.0.1:3000/api/datasources/$DS_ID/capabilities" \
+            | tr -d '\r' | grep -q '"supportsSqliteRowsApi":true'
+          curl -fsS "http://127.0.0.1:3000/api/datasources/$DS_ID/tables/people/preview?limit=2" \
+            | tr -d '\r' | grep -q '"Alice"'
       - name: Verify cache headers for index.html
         run: |
           curl -fsSI http://127.0.0.1:3000/ | tr -d '\r' | grep -i '^cache-control: no-cache$'
